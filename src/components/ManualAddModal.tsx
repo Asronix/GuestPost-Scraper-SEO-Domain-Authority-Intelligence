@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Plus, Globe, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Plus, Globe, AlertCircle, CheckCircle, ArrowRight } from 'lucide-react';
+import { analyzeDomain } from '../utils/domainUtils.ts';
 
 interface ManualAddModalProps {
   isOpen: boolean;
@@ -24,13 +25,56 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
   const [feeStatus, setFeeStatus] = useState('Free Submission');
   const [guidelines, setGuidelines] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'error' | 'success'; message: string; suggestedApex?: string } | null>(null);
 
   if (!isOpen) return null;
+
+  const handleUrlChange = (val: string) => {
+    setUrl(val);
+    if (!val.trim()) {
+      setFeedback(null);
+      return;
+    }
+    const analysis = analyzeDomain(val.trim());
+    if (analysis && analysis.isGov) {
+      setFeedback({
+        type: 'error',
+        message: `Government websites (.gov) do not accept commercial guest posts and are not permitted.`
+      });
+    } else if (analysis && analysis.isSubdomain) {
+      setFeedback({
+        type: 'error',
+        message: `Subdomains are not permitted. Opportunities only accept apex root domains.`,
+        suggestedApex: analysis.apex
+      });
+    } else {
+      if (feedback?.type === 'error') {
+        setFeedback(null);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
+
+    const analysis = analyzeDomain(url.trim());
+    if (analysis && analysis.isGov) {
+      setFeedback({
+        type: 'error',
+        message: `The domain '${analysis.host}' is a government website (.gov). Government sites do not accept guest posts and are excluded.`
+      });
+      return;
+    }
+
+    if (analysis && analysis.isSubdomain) {
+      setFeedback({
+        type: 'error',
+        message: `The domain '${analysis.host}' is a subdomain. Subdomains are filtered out—please use apex root domain '${analysis.apex}'.`,
+        suggestedApex: analysis.apex
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setFeedback(null);
@@ -85,18 +129,33 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           {feedback && (
             <div
-              className={`p-3 rounded-lg border flex items-center gap-2 ${
+              className={`p-3 rounded-lg border flex flex-col gap-2 ${
                 feedback.type === 'error'
                   ? 'bg-rose-950/40 border-rose-800 text-rose-300'
                   : 'bg-emerald-950/40 border-emerald-800 text-emerald-300'
               }`}
             >
-              {feedback.type === 'error' ? (
-                <AlertCircle className="w-4 h-4 shrink-0" />
-              ) : (
-                <CheckCircle className="w-4 h-4 shrink-0" />
+              <div className="flex items-center gap-2">
+                {feedback.type === 'error' ? (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                )}
+                <span>{feedback.message}</span>
+              </div>
+              {feedback.suggestedApex && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl(feedback.suggestedApex!);
+                    setFeedback(null);
+                  }}
+                  className="self-start inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-rose-900/60 hover:bg-rose-800/80 text-rose-200 border border-rose-700/80 rounded-md transition-colors"
+                >
+                  <span>Use apex root domain: <strong>{feedback.suggestedApex}</strong></span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               )}
-              <span>{feedback.message}</span>
             </div>
           )}
 
@@ -110,7 +169,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
                 type="text"
                 required
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => handleUrlChange(e.target.value)}
                 placeholder="e.g. techcrunch.com or https://site.com/write-for-us"
                 className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
               />

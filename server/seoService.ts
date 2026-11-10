@@ -74,22 +74,10 @@ const AUTHORITY_BASELINE: Record<string, number> = {
   'venturebeat.com': 91
 };
 
+import { getApexDomain } from './domainUtils.ts';
+
 export function normalizeDomain(input: string): string {
-  try {
-    let clean = input.trim().toLowerCase();
-    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = 'https://' + clean;
-    }
-    const parsed = new URL(clean);
-    let host = parsed.hostname;
-    // Strip leading www.
-    if (host.startsWith('www.')) {
-      host = host.slice(4);
-    }
-    return host;
-  } catch {
-    return input.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].trim();
-  }
+  return getApexDomain(input);
 }
 
 /**

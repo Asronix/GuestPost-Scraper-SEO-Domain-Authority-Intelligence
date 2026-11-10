@@ -159,7 +159,7 @@ export async function appendToGoogleSheet(
   if (newPosts.length === 0) return;
 
   const rows = newPosts.map(postToSheetRow);
-  const res = await fetch(
+  let res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Guest Posts!A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     {
       method: 'POST',
@@ -173,6 +173,23 @@ export async function appendToGoogleSheet(
     }
   );
 
+  // If specific sheet name isn't found, fallback to default first sheet range
+  if (!res.ok && res.status !== 401) {
+    res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          values: rows
+        })
+      }
+    );
+  }
+
   if (!res.ok) {
     await handleSheetsError(res, 'Failed to append rows to Google Sheet');
   }
@@ -185,7 +202,7 @@ export async function pullFromGoogleSheet(
   accessToken: string,
   spreadsheetId: string
 ): Promise<Partial<GuestPost>[]> {
-  const res = await fetch(
+  let res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Guest Posts!A2:M`,
     {
       headers: {
@@ -193,6 +210,18 @@ export async function pullFromGoogleSheet(
       }
     }
   );
+
+  // Fallback to standard sheet range if 'Guest Posts' tab not found
+  if (!res.ok && res.status !== 401) {
+    res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A2:M`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+  }
 
   if (!res.ok) {
     await handleSheetsError(res, 'Failed to read from Google Sheet');

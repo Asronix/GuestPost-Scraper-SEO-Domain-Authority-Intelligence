@@ -27,6 +27,10 @@ import {
   fetchOpenPageRank
 } from './server/seoService.ts';
 import { generatePythonSeleniumScript } from './server/seleniumGenerator.ts';
+import {
+  analyzeDomain,
+  filterAndDeduplicateOpportunities
+} from './server/domainUtils.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,8 +79,8 @@ function readSettings() {
     mozSecretKey: '',
     crawlerUserAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     autoDeduplicate: true,
-    centralizedSheetId: '',
-    centralizedSheetUrl: ''
+    centralizedSheetId: '1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4',
+    centralizedSheetUrl: 'https://docs.google.com/spreadsheets/d/1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4/edit?gid=1626117545#gid=1626117545'
   };
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
@@ -198,7 +202,7 @@ app.get('/api/guestposts', (req: Request, res: Response) => {
   });
 });
 
-// 2. Add / Import Manual Site (with Automatic Deduplication)
+// 2. Add / Import Manual Site (with Automatic Deduplication & Subdomain Filter)
 app.post('/api/guestposts', async (req: Request, res: Response) => {
   const { url, niche, contactEmail, guidelines, feeStatus } = req.body;
   if (!url) {
@@ -206,16 +210,52 @@ app.post('/api/guestposts', async (req: Request, res: Response) => {
     return;
   }
 
-  const rootDomain = normalizeDomain(url);
+  const analysis = analyzeDomain(url);
+  if (!analysis || !analysis.host) {
+    res.status(400).json({ error: 'Valid domain or URL is required' });
+    return;
+  }
+
+  // 1. Filter out all government domains (.gov, .gov.xx, .govt.xx)
+  if (analysis.isGov) {
+    res.status(400).json({
+      error: 'Government domain not permitted',
+      message: `The domain '${analysis.host}' is a government website (.gov). Government sites do not accept commercial guest posts and are strictly excluded.`
+    });
+    return;
+  }
+
+  // 2. Filter out all subdomains
+  if (analysis.isSubdomain) {
+    res.status(400).json({
+      error: 'Subdomain not permitted',
+      message: `The domain '${analysis.host}' is a subdomain. Opportunities strictly accept apex root domains (e.g. ${analysis.apex}).`
+    });
+    return;
+  }
+
+  const rootDomain = analysis.apex;
+  const brandBase = analysis.brandBase;
   const posts = readGuestPosts();
 
-  // Strict Deduplication Check
+  // Strict Deduplication Check (Exact apex domain)
   const existing = posts.find(p => p.rootDomain.toLowerCase() === rootDomain.toLowerCase());
   if (existing) {
     res.status(409).json({
       error: 'Duplicate site detected',
       message: `The domain '${rootDomain}' is already in your database. Duplicates are blocked.`,
       existing
+    });
+    return;
+  }
+
+  // Strict Regional / ccTLD duplicate check (e.g. yelp.ca, yelp.uk when yelp.com is present)
+  const existingBrand = posts.find(p => analyzeDomain(p.rootDomain).brandBase === brandBase);
+  if (existingBrand) {
+    res.status(409).json({
+      error: 'Regional ccTLD brand duplicate detected',
+      message: `The domain '${rootDomain}' shares the same brand '${brandBase}' with existing opportunity '${existingBrand.domain}'. Only one regional domain per website is permitted.`,
+      existing: existingBrand
     });
     return;
   }
@@ -264,12 +304,17 @@ app.post('/api/guestposts/import', async (req: Request, res: Response) => {
 
   const posts = readGuestPosts();
   const existingMap = new Map<string, number>();
+  const existingBrandMap = new Map<string, number>();
+
   posts.forEach((p, idx) => {
     existingMap.set(p.rootDomain.toLowerCase(), idx);
+    existingBrandMap.set(analyzeDomain(p.rootDomain).brandBase, idx);
   });
 
   const settings = readSettings();
   let addedCount = 0;
+  let govSkipped = 0;
+  let subdomainsSkipped = 0;
   let duplicatesSkipped = 0;
   let updatedCount = 0;
   const newItemsToPrepend: ScrapedGuestPost[] = [];
@@ -278,17 +323,36 @@ app.post('/api/guestposts/import', async (req: Request, res: Response) => {
     const rawTarget = item.rootDomain || item.domain || item.pageUrl || item.url;
     if (!rawTarget || typeof rawTarget !== 'string' || !rawTarget.trim()) continue;
 
-    const rootDomain = normalizeDomain(rawTarget.trim());
-    if (!rootDomain) continue;
+    const analysis = analyzeDomain(rawTarget.trim());
+    if (!analysis || !analysis.host) continue;
 
+    // 1. Filter out all government domains (.gov, .gov.xx, .govt.xx)
+    if (analysis.isGov) {
+      govSkipped++;
+      continue;
+    }
+
+    // 2. Filter out all subdomains
+    if (analysis.isSubdomain) {
+      subdomainsSkipped++;
+      continue;
+    }
+
+    const rootDomain = analysis.apex;
     const lowerRoot = rootDomain.toLowerCase();
+    const brandBase = analysis.brandBase;
 
-    // Check duplicate
-    if (existingMap.has(lowerRoot)) {
+    // 2. Check exact duplicate or ccTLD brand duplicate (e.g. yelp.ca vs yelp.uk)
+    const hasExact = existingMap.has(lowerRoot);
+    const hasBrand = existingBrandMap.has(brandBase);
+
+    if (hasExact || hasBrand) {
       if (updateDuplicates) {
-        const idx = existingMap.get(lowerRoot)!;
+        const idx = hasExact ? existingMap.get(lowerRoot)! : existingBrandMap.get(brandBase)!;
         posts[idx] = {
           ...posts[idx],
+          domain: rootDomain,
+          rootDomain,
           pageUrl: item.pageUrl || item.url || posts[idx].pageUrl,
           contactEmail: item.contactEmail || item.email || posts[idx].contactEmail,
           guidelinesSummary: item.guidelinesSummary || item.guidelines || posts[idx].guidelinesSummary,
@@ -348,7 +412,8 @@ app.post('/api/guestposts/import', async (req: Request, res: Response) => {
     };
 
     newItemsToPrepend.push(newPost);
-    existingMap.set(lowerRoot, -1); // mark as seen for the batch
+    existingMap.set(lowerRoot, -1);
+    existingBrandMap.set(brandBase, -1);
     addedCount++;
   }
 
@@ -358,6 +423,8 @@ app.post('/api/guestposts/import', async (req: Request, res: Response) => {
   res.json({
     success: true,
     addedCount,
+    govSkipped,
+    subdomainsSkipped,
     duplicatesSkipped,
     updatedCount,
     totalInDatabase: combined.length
@@ -397,28 +464,19 @@ app.delete('/api/guestposts/:id', (req: Request, res: Response) => {
   res.json({ success: true, remaining: posts.length });
 });
 
-// 5. Bulk Deduplicate Database Action
+// 5. Bulk Deduplicate Database Action (Filters Gov Domains, Subdomains & Collapses ccTLDs)
 app.post('/api/guestposts/deduplicate', (_req: Request, res: Response) => {
   const posts = readGuestPosts();
-  const seen = new Set<string>();
-  const uniquePosts: ScrapedGuestPost[] = [];
-  let duplicatesRemoved = 0;
+  const { filtered, govRemoved, subdomainsRemoved, ccTldDuplicatesRemoved, totalRemoved } = filterAndDeduplicateOpportunities(posts);
 
-  for (const post of posts) {
-    const key = post.rootDomain.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniquePosts.push(post);
-    } else {
-      duplicatesRemoved++;
-    }
-  }
-
-  writeGuestPosts(uniquePosts);
+  writeGuestPosts(filtered);
   res.json({
     success: true,
-    duplicatesRemoved,
-    uniqueCount: uniquePosts.length
+    duplicatesRemoved: totalRemoved,
+    govRemoved,
+    subdomainsRemoved,
+    ccTldDuplicatesRemoved,
+    uniqueCount: filtered.length
   });
 });
 
@@ -431,7 +489,7 @@ app.post('/api/scraper/start', async (req: Request, res: Response) => {
 
   const {
     mode = 'continuous',
-    keyword = 'technology',
+    keyword = 'beauty',
     footprint = 'write for us',
     customUrls = [],
     maxResults = 0,
@@ -653,10 +711,13 @@ app.get('/api/export/csv', (req: Request, res: Response) => {
 });
 
 // 14. Export Python Selenium Standalone Script
-app.get('/api/export/selenium-script', (_req: Request, res: Response) => {
+app.get('/api/export/selenium-script', (req: Request, res: Response) => {
   const settings = readSettings();
+  const nicheQuery = typeof req.query.niche === 'string' ? req.query.niche : 'beauty';
+  const keywords = generateTopicalKeywords(nicheQuery);
+
   const script = generatePythonSeleniumScript({
-    keywords: ['technology', 'digital marketing', 'software', 'startups', 'web design'],
+    keywords: keywords.slice(0, 8),
     footprint: 'write for us',
     minDA: 30,
     openPageRankKey: settings.openPageRankKey
@@ -686,51 +747,48 @@ app.post('/api/sheets/config', (req: Request, res: Response) => {
 });
 
 // 16. Download Entire App as a ZIP Archive (Source, Crawler, Configs, Instructions)
-app.get('/api/export/app-zip', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename="guestpost-scraper-app.zip"');
+app.get('/api/export/app-zip', async (req: Request, res: Response) => {
+  try {
+    const archive = new ZipArchive({
+      zlib: { level: 9 }
+    });
 
-  const archive = new ZipArchive({
-    zlib: { level: 9 }
-  });
+    const chunks: Buffer[] = [];
+    archive.on('data', (chunk: Buffer) => chunks.push(chunk));
 
-  archive.on('error', (err: any) => {
-    console.error('Archive generation error:', err);
-    if (!res.headersSent) {
-      res.status(500).send('Error packaging application zip');
+    const archivePromise = new Promise<Buffer>((resolve, reject) => {
+      archive.on('end', () => resolve(Buffer.concat(chunks)));
+      archive.on('error', (err: any) => reject(err));
+    });
+
+    // Package src directory
+    archive.directory(path.join(__dirname, 'src'), 'src');
+    // Package server directory
+    archive.directory(path.join(__dirname, 'server'), 'server');
+    // Package data directory
+    archive.directory(path.join(__dirname, 'data'), 'data');
+
+    // Package project root files
+    const rootFiles = [
+      'server.ts',
+      'package.json',
+      'tsconfig.json',
+      'vite.config.ts',
+      'index.html',
+      'metadata.json',
+      '.env.example',
+      'firebase-applet-config.json'
+    ];
+
+    for (const file of rootFiles) {
+      const full = path.join(__dirname, file);
+      if (fs.existsSync(full)) {
+        archive.file(full, { name: file });
+      }
     }
-  });
 
-  archive.pipe(res);
-
-  // Package src directory
-  archive.directory(path.join(__dirname, 'src'), 'src');
-  // Package server directory
-  archive.directory(path.join(__dirname, 'server'), 'server');
-  // Package data directory
-  archive.directory(path.join(__dirname, 'data'), 'data');
-
-  // Package project root files
-  const rootFiles = [
-    'server.ts',
-    'package.json',
-    'tsconfig.json',
-    'vite.config.ts',
-    'index.html',
-    'metadata.json',
-    '.env.example',
-    'firebase-applet-config.json'
-  ];
-
-  for (const file of rootFiles) {
-    const full = path.join(__dirname, file);
-    if (fs.existsSync(full)) {
-      archive.file(full, { name: file });
-    }
-  }
-
-  // Add Comprehensive README
-  const readme = `# GuestPost Scraper & SEO Intelligence Application
+    // Add Comprehensive README
+    const readme = `# GuestPost Scraper & SEO Intelligence Application
 
 Complete full-stack application for scraping, verifying, deduplicating, and tracking high-authority guest post opportunities.
 
@@ -754,16 +812,30 @@ Complete full-stack application for scraping, verifying, deduplicating, and trac
 
 ## Key Features Included
 - **Continuous Web Crawler**: Runs indefinitely, finding "write for us" sections across niches.
+- **Subdomain Filter**: Automatically filters out all subdomains; stores only apex root domains.
+- **Regional ccTLD Collapse**: Consolidates country-code domains (e.g., yelp.ca, yelp.uk) to prevent duplicate brand opportunities.
 - **Instant Stop Button**: Halts crawling immediately from anywhere in the app.
-- **Zero Duplicates**: Automatic root domain normalization and deduplication.
 - **Free SEO Domain Authority**: Algorithmic engine + OpenPageRank + Moz APIs.
-- **Centralized Google Sheets**: Bidirectional real-time sync with Google Sheets.
+- **Centralized Google Sheets**: Real-time auto-sync with Google Sheets.
 - **Standalone Python Selenium Scraper**: Production-grade headless Chrome script with anti-detection headers.
 - **Gemini AI Pitch Generator**: AI-crafted article ideas and editor outreach drafts.
 `;
-  archive.append(readme, { name: 'README.md' });
+    archive.append(readme, { name: 'README.md' });
 
-  archive.finalize();
+    await archive.finalize();
+    const zipBuffer = await archivePromise;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="guestpost-scraper-app.zip"');
+    res.setHeader('Content-Length', zipBuffer.length.toString());
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(zipBuffer);
+  } catch (err: any) {
+    console.error('Archive generation error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error packaging application zip' });
+    }
+  }
 });
 
 // -------------------------------------------------------------

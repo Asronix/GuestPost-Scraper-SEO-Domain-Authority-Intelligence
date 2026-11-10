@@ -26,6 +26,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
 }) => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -47,19 +48,31 @@ npm run dev
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setIsDownloading(true);
-    // Direct browser download
-    const link = document.createElement('a');
-    link.href = '/api/export/app-zip';
-    link.setAttribute('download', 'guestpost-scraper-app.zip');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => {
+    setDownloadError(null);
+    try {
+      const response = await fetch('/api/export/app-zip');
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'guestpost-scraper-app.zip';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 2000);
+    } catch (err: any) {
+      console.error('Failed to download application zip:', err);
+      setDownloadError(err?.message || 'Download failed. Please try again.');
+    } finally {
       setIsDownloading(false);
-    }, 2500);
+    }
   };
 
   return (
@@ -88,6 +101,18 @@ npm run dev
 
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1 text-slate-300 text-xs">
+          {downloadError && (
+            <div className="p-3.5 rounded-xl border border-rose-800 bg-rose-950/60 text-rose-200 flex items-center justify-between text-xs">
+              <span>{downloadError}</span>
+              <button
+                onClick={() => setDownloadError(null)}
+                className="text-slate-400 hover:text-white ml-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Highlight Callout */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-indigo-950/40 border border-cyan-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -190,10 +215,11 @@ npm run dev
             </button>
             <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-xl transition-all shadow-md active:scale-95"
+              disabled={isDownloading}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download ZIP Now</span>
+              <Download className={`w-3.5 h-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
+              <span>{isDownloading ? 'Preparing ZIP...' : 'Download ZIP Now'}</span>
             </button>
           </div>
         </div>

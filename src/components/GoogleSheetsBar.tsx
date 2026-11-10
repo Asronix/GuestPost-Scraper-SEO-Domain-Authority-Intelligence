@@ -25,6 +25,9 @@ interface GoogleSheetsBarProps {
   centralizedSheetId: string;
   centralizedSheetUrl: string;
   posts: GuestPost[];
+  isAutoSyncing?: boolean;
+  autoSyncedCount?: number;
+  lastAutoSyncedDomain?: string;
   onSignIn: () => Promise<void>;
   onSignOut: () => Promise<void>;
   onSheetConfigured: (id: string, url: string) => void;
@@ -37,6 +40,9 @@ export const GoogleSheetsBar: React.FC<GoogleSheetsBarProps> = ({
   centralizedSheetId,
   centralizedSheetUrl,
   posts,
+  isAutoSyncing = false,
+  autoSyncedCount = 0,
+  lastAutoSyncedDomain = '',
   onSignIn,
   onSignOut,
   onSheetConfigured,
@@ -179,20 +185,37 @@ export const GoogleSheetsBar: React.FC<GoogleSheetsBarProps> = ({
             <FileSpreadsheet className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-white">Centralized Google Sheets Storage</h3>
-              {centralizedSheetId ? (
+              {centralizedSheetId && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                  Connected & Centralized
+                  Default Sheet Linked
                 </span>
+              )}
+              {user ? (
+                isAutoSyncing ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800 flex items-center gap-1.5 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />
+                    <span>Auto-syncing to Sheet...</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Auto-Sync: Active (Zero clicks needed)</span>
+                    {autoSyncedCount > 0 && <span className="text-emerald-300 font-bold">({autoSyncedCount} synced)</span>}
+                  </span>
+                )
               ) : (
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-slate-400 border border-slate-700">
-                  Ready to Connect
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-950/70 text-amber-300 border border-amber-800">
+                  Auto-Sync Ready (Connect below)
                 </span>
               )}
             </div>
             <p className="text-slate-400 text-xs mt-0.5 max-w-xl">
-              All scraped opportunities are stored permanently on the server and synchronized to your centralized Google Sheet so no data ever disappears when refreshed.
+              Default centralized spreadsheet is connected. Newly scanned websites automatically sync to your Google Sheet in real time without needing to click Sync.
             </p>
           </div>
         </div>

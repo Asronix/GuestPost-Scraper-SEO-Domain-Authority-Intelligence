@@ -12,6 +12,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { GuestPost } from '../types.ts';
+import { analyzeDomain } from '../utils/domainUtils.ts';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -34,6 +35,9 @@ interface ParsedImportRow {
   discoveredAt?: string;
   guidelinesSummary?: string;
   isDuplicate: boolean;
+  isSubdomain: boolean;
+  isCcTldDuplicate: boolean;
+  isGov: boolean;
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({
@@ -124,6 +128,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   };
 
   const processRecords = (records: any[]) => {
+    const existingBrandSet = new Set(existingPosts.map(p => analyzeDomain(p.rootDomain).brandBase));
+    const seenBrands = new Set<string>();
     const results: ParsedImportRow[] = [];
 
     for (const raw of records) {
@@ -140,9 +146,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
       if (!domainVal || typeof domainVal !== 'string') continue;
 
-      let cleanDomain = domainVal.trim().toLowerCase();
-      cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].trim();
-      if (!cleanDomain || !cleanDomain.includes('.')) continue;
+      let rawHost = domainVal.trim().toLowerCase();
+      rawHost = rawHost.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].trim();
+      if (!rawHost || !rawHost.includes('.')) continue;
+
+      const analysis = analyzeDomain(rawHost);
+      const isSub = analysis.isSubdomain;
+      const cleanDomain = analysis.apex;
+      const brand = analysis.brandBase;
 
       // Extract DA
       let da: number | undefined;
@@ -189,9 +200,14 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       const discoveredAt = raw['discovered at'] || raw.discovere || raw.discoveredat || new Date().toISOString();
 
       const isDuplicate = existingDomainSet.has(cleanDomain);
+      const isCcTldDuplicate = !isSub && !isDuplicate && (existingBrandSet.has(brand) || seenBrands.has(brand));
+
+      if (!isSub && !isDuplicate && !isCcTldDuplicate) {
+        seenBrands.add(brand);
+      }
 
       results.push({
-        domain: cleanDomain,
+        domain: rawHost,
         rootDomain: cleanDomain,
         domainAuthority: da,
         pageRank,
@@ -203,7 +219,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         status,
         discoveredAt,
         guidelinesSummary,
-        isDuplicate
+        isDuplicate,
+        isSubdomain: isSub,
+        isCcTldDuplicate,
+        isGov: analysis.isGov
       });
     }
 
@@ -274,7 +293,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({
   };
 
   const handleConfirmImport = async () => {
-    if (parsedRows.length === 0) return;
+    const validRows = parsedRows.filter(r => !r.isGov && !r.isSubdomain && !r.isCcTldDuplicate);
+    if (validRows.length === 0) return;
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -283,7 +303,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: parsedRows,
+          items: validRows,
           updateDuplicates
         })
       });
@@ -306,8 +326,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     }
   };
 
-  const newCount = parsedRows.filter(r => !r.isDuplicate).length;
-  const duplicateCount = parsedRows.filter(r => r.isDuplicate).length;
+  const govCount = parsedRows.filter(r => r.isGov).length;
+  const subdomainCount = parsedRows.filter(r => !r.isGov && r.isSubdomain).length;
+  const ccTldDuplicateCount = parsedRows.filter(r => !r.isGov && !r.isSubdomain && r.isCcTldDuplicate).length;
+  const duplicateCount = parsedRows.filter(r => !r.isGov && !r.isSubdomain && r.isDuplicate).length;
+  const newCount = parsedRows.filter(r => !r.isGov && !r.isSubdomain && !r.isDuplicate && !r.isCcTldDuplicate).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -432,14 +455,42 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
                   <span className="text-emerald-400 font-medium">
                     {newCount} New Sites
                   </span>
-                  <span className="text-slate-500">·</span>
-                  <span className={duplicateCount > 0 ? 'text-amber-400 font-medium' : 'text-slate-500'}>
-                    {duplicateCount} Duplicates
-                  </span>
+                  {govCount > 0 && (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-rose-400 font-medium">
+                        {govCount} .gov Excluded
+                      </span>
+                    </>
+                  )}
+                  {subdomainCount > 0 && (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-rose-400 font-medium">
+                        {subdomainCount} Subdomains Excluded
+                      </span>
+                    </>
+                  )}
+                  {ccTldDuplicateCount > 0 && (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-amber-400 font-medium">
+                        {ccTldDuplicateCount} ccTLD Duplicates
+                      </span>
+                    </>
+                  )}
+                  {duplicateCount > 0 && (
+                    <>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-amber-300 font-medium">
+                        {duplicateCount} Duplicates
+                      </span>
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       setParsedRows([]);
@@ -490,7 +541,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                     {parsedRows.slice(0, 50).map((row, idx) => (
                       <tr key={idx} className="hover:bg-slate-800/30">
                         <td className="py-2 px-3 font-semibold text-slate-200 truncate max-w-[180px]">
-                          {row.rootDomain}
+                          {row.domain}
+                          {row.isSubdomain && (
+                            <span className="block text-[10px] text-rose-400 font-normal">subdomain (excluded)</span>
+                          )}
                         </td>
                         <td className="py-2 px-3 text-center tabular-nums">
                           {row.domainAuthority !== undefined ? (
@@ -506,7 +560,19 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                           {row.contactEmail || '—'}
                         </td>
                         <td className="py-2 px-3 text-right whitespace-nowrap">
-                          {row.isDuplicate ? (
+                          {row.isGov ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-rose-950/60 text-rose-300 border border-rose-800">
+                              .gov (Excluded)
+                            </span>
+                          ) : row.isSubdomain ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-rose-950/60 text-rose-300 border border-rose-800">
+                              Subdomain (Excluded)
+                            </span>
+                          ) : row.isCcTldDuplicate ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-amber-950/60 text-amber-300 border border-amber-800">
+                              ccTLD Duplicate (Excluded)
+                            </span>
+                          ) : row.isDuplicate ? (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold bg-amber-950/60 text-amber-300 border border-amber-800">
                               {updateDuplicates ? 'Will Update' : 'Duplicate (Skip)'}
                             </span>

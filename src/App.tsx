@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { User } from 'firebase/auth';
 import { GuestPost, ScraperState, DashboardStats, AppSettings } from './types.ts';
 import { Header } from './components/Header.tsx';
@@ -14,7 +14,11 @@ import { SeleniumExportView } from './components/SeleniumExportView.tsx';
 import { GoogleSheetsBar } from './components/GoogleSheetsBar.tsx';
 import { DownloadAppModal } from './components/DownloadAppModal.tsx';
 import { initAuth, googleSignIn, logout, setAccessTokenInMemory } from './services/firebaseAuth.ts';
+import { appendToGoogleSheet, pullFromGoogleSheet } from './services/sheetsService.ts';
 import { CheckCircle2, ShieldCheck, AlertCircle, Square, Clock, Terminal } from 'lucide-react';
+
+const DEFAULT_SHEET_ID = '1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4';
+const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4/edit?gid=1626117545#gid=1626117545';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'opportunities' | 'console' | 'selenium' | 'settings'>('opportunities');
@@ -51,8 +55,15 @@ export default function App() {
   // Google Sheets & Centralized Storage State
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
-  const [centralizedSheetId, setCentralizedSheetId] = useState<string>('');
-  const [centralizedSheetUrl, setCentralizedSheetUrl] = useState<string>('');
+  const [centralizedSheetId, setCentralizedSheetId] = useState<string>(DEFAULT_SHEET_ID);
+  const [centralizedSheetUrl, setCentralizedSheetUrl] = useState<string>(DEFAULT_SHEET_URL);
+
+  // Auto-Sync Engine State & Refs
+  const [isAutoSyncing, setIsAutoSyncing] = useState<boolean>(false);
+  const [autoSyncedCount, setAutoSyncedCount] = useState<number>(0);
+  const [lastAutoSyncedDomain, setLastAutoSyncedDomain] = useState<string>('');
+  const syncedDomainsRef = useRef<Set<string>>(new Set());
+  const isAutoSyncInProgressRef = useRef<boolean>(false);
 
   // Scraper State & Poller
   const [scraperState, setScraperState] = useState<ScraperState>({
@@ -237,6 +248,73 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [scraperState.isRunning, fetchPosts]);
+
+  // 1. Initial Google Sheets Sync State: Read existing rows from Sheet to prevent duplicates
+  useEffect(() => {
+    if (!googleAccessToken || !centralizedSheetId) return;
+
+    let isSubscribed = true;
+    const fetchExistingSheetDomains = async () => {
+      try {
+        const sheetRows = await pullFromGoogleSheet(googleAccessToken, centralizedSheetId);
+        if (!isSubscribed) return;
+        sheetRows.forEach(row => {
+          if (row.domain) syncedDomainsRef.current.add(row.domain.toLowerCase());
+          if (row.rootDomain) syncedDomainsRef.current.add(row.rootDomain.toLowerCase());
+        });
+      } catch (err: any) {
+        console.warn('Initial sheet domain check notice:', err?.message);
+      }
+    };
+
+    fetchExistingSheetDomains();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [googleAccessToken, centralizedSheetId]);
+
+  // 2. Real-time Background Auto-Sync: Automatically streams newly scanned sites to Google Sheets
+  useEffect(() => {
+    if (!googleAccessToken || !centralizedSheetId || posts.length === 0) return;
+
+    // Filter posts that are not yet marked as synced to the Google Sheet
+    const unsyncedPosts = posts.filter(p => {
+      const root = p.rootDomain.toLowerCase();
+      const dom = p.domain.toLowerCase();
+      return !syncedDomainsRef.current.has(root) && !syncedDomainsRef.current.has(dom);
+    });
+
+    if (unsyncedPosts.length === 0 || isAutoSyncInProgressRef.current) return;
+
+    const performAutoSync = async () => {
+      isAutoSyncInProgressRef.current = true;
+      setIsAutoSyncing(true);
+
+      // Pre-mark domains to avoid redundant parallel calls while append fetch is pending
+      unsyncedPosts.forEach(p => {
+        syncedDomainsRef.current.add(p.rootDomain.toLowerCase());
+        syncedDomainsRef.current.add(p.domain.toLowerCase());
+      });
+
+      try {
+        await appendToGoogleSheet(googleAccessToken, centralizedSheetId, unsyncedPosts);
+        setAutoSyncedCount(prev => prev + unsyncedPosts.length);
+        setLastAutoSyncedDomain(unsyncedPosts[0]?.domain || '');
+      } catch (err: any) {
+        console.warn('Auto-sync append error:', err?.message);
+        // Unmark so they can retry on subsequent scan cycles
+        unsyncedPosts.forEach(p => {
+          syncedDomainsRef.current.delete(p.rootDomain.toLowerCase());
+          syncedDomainsRef.current.delete(p.domain.toLowerCase());
+        });
+      } finally {
+        setIsAutoSyncing(false);
+        isAutoSyncInProgressRef.current = false;
+      }
+    };
+
+    performAutoSync();
+  }, [posts, googleAccessToken, centralizedSheetId]);
 
   // Handle Start Scraper
   const handleStartScraper = async (options: any) => {
@@ -446,6 +524,9 @@ export default function App() {
           centralizedSheetId={centralizedSheetId}
           centralizedSheetUrl={centralizedSheetUrl}
           posts={posts}
+          isAutoSyncing={isAutoSyncing}
+          autoSyncedCount={autoSyncedCount}
+          lastAutoSyncedDomain={lastAutoSyncedDomain}
           onSignIn={handleGoogleSignIn}
           onSignOut={handleGoogleSignOut}
           onSheetConfigured={(id, url) => {

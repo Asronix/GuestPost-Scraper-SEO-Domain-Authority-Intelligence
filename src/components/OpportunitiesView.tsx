@@ -125,7 +125,7 @@ export const OpportunitiesView: React.FC<OpportunitiesViewProps> = ({
           </div>
 
           {/* Quick Actions & View Switch */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenImportModal}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors whitespace-nowrap"

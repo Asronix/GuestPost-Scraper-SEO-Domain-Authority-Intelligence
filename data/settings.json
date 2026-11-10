@@ -3,8 +3,10 @@
   "openPageRankKey": "",
   "mozAccessId": "",
   "mozSecretKey": "",
-  "crawlerUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  "crawlerUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   "concurrency": 3,
   "requestTimeoutMs": 8000,
-  "autoDeduplicate": true
+  "autoDeduplicate": true,
+  "centralizedSheetId": "1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4",
+  "centralizedSheetUrl": "https://docs.google.com/spreadsheets/d/1e7_9mm7FtQJJnlG-oVOaRjS7JJeRoa0ROZSMCc9BMX4/edit?gid=1626117545#gid=1626117545"
 }

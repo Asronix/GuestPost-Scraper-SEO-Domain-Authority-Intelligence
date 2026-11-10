@@ -13,6 +13,7 @@
 
 import * as cheerio from 'cheerio';
 import { getDomainAuthority, normalizeDomain } from './seoService.ts';
+import { analyzeDomain } from './domainUtils.ts';
 
 export interface ScrapedGuestPost {
   id: string;
@@ -120,34 +121,153 @@ const ROTATION_FOOTPRINTS = [
   'submit a pitch'
 ];
 
-// Master Keywords for Continuous Crawling
-const ROTATION_KEYWORDS = [
-  'technology',
-  'artificial intelligence',
-  'software engineering',
-  'digital marketing',
-  'seo optimization',
-  'saas growth',
-  'web development',
-  'cloud computing',
-  'cybersecurity',
-  'fintech',
-  'personal finance',
-  'startup entrepreneurship',
-  'content strategy',
-  'data science',
-  'machine learning',
-  'devops architecture',
-  'mobile development',
-  'health and wellness',
-  'productivity tools',
-  'ecommerce marketing',
-  'cryptocurrency',
-  'remote work culture'
-];
+// Master Keywords Generation Engine
+// Dynamically creates tightly-coupled topical sub-keywords tailored to the active niche
+export function generateTopicalKeywords(topicOrNiche: string): string[] {
+  const clean = (topicOrNiche || '').trim().toLowerCase();
+
+  // 1. Beauty, Skincare & Cosmetics (User's primary niche)
+  if (
+    clean.includes('beauty') ||
+    clean.includes('skincare') ||
+    clean.includes('skin care') ||
+    clean.includes('cosmetic') ||
+    clean.includes('makeup') ||
+    clean.includes('hair') ||
+    clean.includes('dermatology') ||
+    clean.includes('aesthetic') ||
+    clean.includes('salon') ||
+    clean.includes('fragrance') ||
+    clean.includes('wellness')
+  ) {
+    return [
+      'beauty',
+      'skincare',
+      'cosmetics',
+      'makeup tips',
+      'haircare',
+      'beauty guidelines',
+      'wellness and beauty',
+      'clean beauty',
+      'natural cosmetics',
+      'anti-aging skincare',
+      'dermatology and beauty',
+      'nail care and aesthetics',
+      'cruelty-free beauty',
+      'beauty routine',
+      'organic skincare',
+      'beauty products review',
+      'lifestyle and beauty',
+      'fashion and beauty'
+    ];
+  }
+
+  // 2. Health & Wellness
+  if (clean.includes('health') || clean.includes('fitness') || clean.includes('nutri')) {
+    return [
+      'health and wellness',
+      'fitness tips',
+      'nutrition guide',
+      'mental health',
+      'healthy lifestyle',
+      'holistic wellness',
+      'diet and nutrition',
+      'weight loss',
+      'yoga and mindfulness',
+      'supplements'
+    ];
+  }
+
+  // 3. Digital Marketing & SEO
+  if (clean.includes('marketing') || clean.includes('seo') || clean.includes('content') || clean.includes('social media')) {
+    return [
+      'digital marketing',
+      'seo optimization',
+      'content strategy',
+      'social media marketing',
+      'email marketing',
+      'link building',
+      'inbound marketing',
+      'search engine marketing',
+      'cro and analytics',
+      'growth marketing'
+    ];
+  }
+
+  // 4. Finance & Investing
+  if (clean.includes('finance') || clean.includes('investing') || clean.includes('money') || clean.includes('crypto')) {
+    return [
+      'personal finance',
+      'investing strategies',
+      'fintech',
+      'cryptocurrency',
+      'wealth building',
+      'budgeting tips',
+      'real estate investing',
+      'stock market analysis',
+      'passive income'
+    ];
+  }
+
+  // 5. Business & Startups
+  if (clean.includes('business') || clean.includes('startup') || clean.includes('entrepreneur')) {
+    return [
+      'startup entrepreneurship',
+      'business strategy',
+      'small business growth',
+      'leadership and management',
+      'b2b sales',
+      'saas growth',
+      'remote work culture',
+      'productivity tools'
+    ];
+  }
+
+  // 6. Technology (ONLY if user explicitly requested technology)
+  if (clean.includes('tech') || clean.includes('software') || clean.includes('code') || clean.includes('developer') || clean.includes('ai')) {
+    return [
+      'technology',
+      'artificial intelligence',
+      'software engineering',
+      'cloud computing',
+      'cybersecurity',
+      'web development',
+      'devops architecture',
+      'machine learning',
+      'mobile development'
+    ];
+  }
+
+  // 7. Dynamic expansion for any custom keyword entered
+  const base = topicOrNiche.trim();
+  return [
+    base,
+    `${base} tips`,
+    `${base} guide`,
+    `${base} trends`,
+    `${base} reviews`,
+    `${base} best practices`,
+    `${base} advice`,
+    `best ${base}`,
+    `${base} lifestyle`,
+    `how to ${base}`
+  ];
+}
 
 // Niche Seed Directory for fallback & bootstrapping
 const NICHE_CANDIDATE_POOLS: Record<string, Array<{ url: string; niche: string }>> = {
+  'beauty': [
+    { url: 'https://byrdie.com/write-for-us', niche: 'Beauty & Skincare' },
+    { url: 'https://stylecraze.com/write-for-us/', niche: 'Beauty & Haircare' },
+    { url: 'https://makeupandbeauty.com/write-for-us/', niche: 'Makeup & Cosmetics' },
+    { url: 'https://thebeautyinsiders.com/write-for-us', niche: 'Cosmetics & Skincare' },
+    { url: 'https://beautytidbits.com/write-for-us/', niche: 'Beauty Tips & Reviews' },
+    { url: 'https://fashionlady.in/write-for-us', niche: 'Fashion & Beauty' },
+    { url: 'https://newbeauty.com/write-for-us/', niche: 'Aesthetics & Skincare' },
+    { url: 'https://skincareorg.com/write-for-us/', niche: 'Dermatology & Skincare' },
+    { url: 'https://bellanaija.com/beauty', niche: 'Beauty & Wellness' },
+    { url: 'https://allure.com', niche: 'Beauty & Trends' }
+  ],
   'tech': [
     { url: 'https://sitepoint.com/write-for-sitepoint/', niche: 'Technology & Coding' },
     { url: 'https://hackernoon.com/write', niche: 'Software & Startups' },
@@ -513,8 +633,27 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
   };
 }
 
-function inferNiche(root: string, html: string, title: string): string {
+function inferNiche(root: string, html: string, title: string, defaultNiche?: string): string {
   const combined = `${root} ${title} ${html.slice(0, 3000)}`.toLowerCase();
+
+  // Beauty, Cosmetics & Skincare (Prioritized)
+  if (
+    combined.includes('beauty') ||
+    combined.includes('skincare') ||
+    combined.includes('skin care') ||
+    combined.includes('cosmetic') ||
+    combined.includes('makeup') ||
+    combined.includes('haircare') ||
+    combined.includes('hair care') ||
+    combined.includes('aesthetic') ||
+    combined.includes('salon') ||
+    combined.includes('dermatology') ||
+    combined.includes('perfume') ||
+    combined.includes('fragrance')
+  ) {
+    return 'Beauty & Skincare';
+  }
+
   if (combined.includes('seo') || combined.includes('marketing') || combined.includes('content') || combined.includes('social media')) {
     return 'Digital Marketing & SEO';
   }
@@ -530,12 +669,14 @@ function inferNiche(root: string, html: string, title: string): string {
   if (combined.includes('startup') || combined.includes('business') || combined.includes('entrepreneur') || combined.includes('saas')) {
     return 'Business & Startups';
   }
-  return 'General Technology';
+
+  // Fallback to active niche rather than generic tech
+  return defaultNiche || 'Beauty & Lifestyle';
 }
 
 function buildSyntheticProfile(targetUrl: string, defaultNiche?: string) {
   const root = normalizeDomain(targetUrl);
-  const niche = defaultNiche || inferNiche(root, '', '');
+  const niche = defaultNiche || inferNiche(root, '', '', defaultNiche);
   return {
     pageUrl: targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}/write-for-us/`,
     pageTitle: `Write for Us | ${root.charAt(0).toUpperCase() + root.slice(1)}`,
@@ -581,63 +722,87 @@ export async function runScraperJob(
     }
   }, 1000);
 
-  addLog('info', `Crawler engine initiated in INDEFINITE CONTINUOUS mode. Crawling until Stop button is clicked.`);
+  // Determine active topical niche (defaults strictly to user's desired niche: beauty)
+  const targetTopic = (options.keyword || (options.mode === 'niche_preset' ? 'beauty' : 'beauty')).trim();
+  const lowerTopic = targetTopic.toLowerCase();
+
+  // Generate topical keywords tightly coupled to user's selected niche
+  const activeRotationKeywords = generateTopicalKeywords(targetTopic);
+
+  // Match corresponding curated candidate pool to avoid cross-niche pollution
+  let targetPoolKey = 'beauty';
+  if (options.mode === 'niche_preset' && options.keyword && NICHE_CANDIDATE_POOLS[options.keyword.toLowerCase()]) {
+    targetPoolKey = options.keyword.toLowerCase();
+  } else if (lowerTopic.includes('tech') || lowerTopic.includes('software') || lowerTopic.includes('code') || lowerTopic.includes('ai')) {
+    targetPoolKey = 'tech';
+  } else if (lowerTopic.includes('market') || lowerTopic.includes('seo')) {
+    targetPoolKey = 'marketing';
+  } else if (lowerTopic.includes('biz') || lowerTopic.includes('business') || lowerTopic.includes('startup')) {
+    targetPoolKey = 'business';
+  } else if (lowerTopic.includes('financ') || lowerTopic.includes('invest') || lowerTopic.includes('money')) {
+    targetPoolKey = 'finance';
+  } else if (lowerTopic.includes('health') || lowerTopic.includes('fit') || lowerTopic.includes('nutri')) {
+    targetPoolKey = 'health';
+  } else {
+    targetPoolKey = 'beauty';
+  }
+
+  const activePool = NICHE_CANDIDATE_POOLS[targetPoolKey] || NICHE_CANDIDATE_POOLS['beauty'];
+
+  addLog('info', `Crawler engine initiated in INDEFINITE CONTINUOUS mode for niche [${targetTopic}]. Crawling until Stop button is clicked.`);
+  addLog('info', `Topical rotation locked to ${activeRotationKeywords.length} niche terms: ${activeRotationKeywords.slice(0, 5).join(', ')}...`);
 
   // Active target queue
   const candidateQueue: Array<{ url: string; niche?: string }> = [];
 
   // Populate initial targets based on mode
   if (options.mode === 'custom_urls' && options.customUrls && options.customUrls.length > 0) {
-    options.customUrls.forEach(u => candidateQueue.push({ url: u.trim() }));
+    options.customUrls.forEach(u => candidateQueue.push({ url: u.trim(), niche: targetTopic }));
     addLog('info', `Queued ${candidateQueue.length} custom website seeds for continuous crawl`);
   } else if (options.mode === 'niche_preset') {
-    const nicheKey = (options.keyword || 'tech').toLowerCase();
-    const pool = NICHE_CANDIDATE_POOLS[nicheKey] || NICHE_CANDIDATE_POOLS['tech'];
-    pool.forEach(item => candidateQueue.push(item));
-    addLog('info', `Loaded initial ${pool.length} candidates for category [${nicheKey}]`);
+    activePool.forEach(item => candidateQueue.push(item));
+    addLog('info', `Loaded initial ${activePool.length} candidates for category [${targetPoolKey}]`);
   } else {
     // dork search initial seeds
     const footprint = options.footprint || 'write for us';
-    const keyword = options.keyword || 'technology';
+    const keyword = targetTopic;
     const initialUrls = await scrapeSearchEngineForFootprints(footprint, keyword, 12);
-    initialUrls.forEach(u => candidateQueue.push({ url: u, niche: keyword }));
+    initialUrls.forEach(u => candidateQueue.push({ url: u, niche: targetTopic }));
+
+    // Seed with category-specific pool ONLY (never cross-pollute with other niches)
+    activePool.forEach(item => candidateQueue.push(item));
   }
 
-  // Also seed with multi-niche pools so the crawler never starves
-  Object.values(NICHE_CANDIDATE_POOLS).forEach(pool => {
-    pool.forEach(item => candidateQueue.push(item));
-  });
-
   const existingDomainSet = new Set(existingList.map(item => item.rootDomain.toLowerCase()));
+  const existingBrandSet = new Set(existingList.map(item => analyzeDomain(item.rootDomain).brandBase));
   let rotationIndex = 0;
 
   // CONTINUOUS INDEFINITE LOOP
   while (currentScraperState.isRunning) {
     currentScraperState.queueSize = candidateQueue.length;
 
-    // Replenish target queue if running low
+    // Replenish target queue if running low using strictly niche-relevant keywords
     if (candidateQueue.length < 5 && currentScraperState.isContinuous) {
       const nextFootprint = ROTATION_FOOTPRINTS[rotationIndex % ROTATION_FOOTPRINTS.length];
-      const nextKeyword = ROTATION_KEYWORDS[Math.floor(rotationIndex / ROTATION_FOOTPRINTS.length) % ROTATION_KEYWORDS.length];
+      const nextKeyword = activeRotationKeywords[Math.floor(rotationIndex / ROTATION_FOOTPRINTS.length) % activeRotationKeywords.length];
       rotationIndex++;
 
       addLog('info', `Queue replenishing: generating search footprint query: "${nextFootprint}" ${nextKeyword}`);
       const freshUrls = await scrapeSearchEngineForFootprints(nextFootprint, nextKeyword, 10);
 
       freshUrls.forEach(u => {
-        const r = normalizeDomain(u);
-        if (!existingDomainSet.has(r)) {
-          candidateQueue.push({ url: u, niche: nextKeyword });
+        const uAnalysis = analyzeDomain(u);
+        if (!uAnalysis.isGov && !uAnalysis.isSubdomain && !existingDomainSet.has(uAnalysis.apex) && !existingBrandSet.has(uAnalysis.brandBase)) {
+          candidateQueue.push({ url: uAnalysis.apex, niche: nextKeyword });
         }
       });
 
-      // If search engines limit, add from other pools
+      // If search engines limit, add from niche-relevant pool ONLY
       if (candidateQueue.length < 3) {
-        const poolKeys = Object.keys(NICHE_CANDIDATE_POOLS);
-        const randomPool = NICHE_CANDIDATE_POOLS[poolKeys[rotationIndex % poolKeys.length]];
-        randomPool.forEach(item => {
-          if (!existingDomainSet.has(normalizeDomain(item.url))) {
-            candidateQueue.push(item);
+        activePool.forEach(item => {
+          const pAnalysis = analyzeDomain(item.url);
+          if (!pAnalysis.isGov && !pAnalysis.isSubdomain && !existingDomainSet.has(pAnalysis.apex) && !existingBrandSet.has(pAnalysis.brandBase)) {
+            candidateQueue.push({ url: pAnalysis.apex, niche: item.niche });
           }
         });
       }
@@ -652,20 +817,41 @@ export async function runScraperJob(
 
     // Dequeue next target
     const currentItem = candidateQueue.shift()!;
-    const root = normalizeDomain(currentItem.url);
+    const analysis = analyzeDomain(currentItem.url);
+
+    // 1. FILTER OUT ALL GOVERNMENT SITES (.gov, .gov.xx, etc.)
+    if (analysis.isGov) {
+      addLog('warn', `[GOV SITE FILTERED] Excluded ${analysis.host} — government (.gov) websites are strictly excluded`);
+      continue;
+    }
+
+    // 2. FILTER OUT ALL SUBDOMAINS (Strict requirement: no subdomains in opportunities)
+    if (analysis.isSubdomain) {
+      addLog('warn', `[SUBDOMAIN FILTERED] Excluded ${analysis.host} — opportunities strictly exclude subdomains`);
+      continue;
+    }
+
+    const root = analysis.apex;
     currentScraperState.currentUrl = currentItem.url;
     currentScraperState.scannedCount++;
     currentScraperState.totalTargets = currentScraperState.scannedCount + candidateQueue.length;
 
-    // DEDUPLICATION CHECK
+    // 3. DEDUPLICATION CHECK (Exact domain OR Regional ccTLD brand duplicate like yelp.ca, yelp.uk)
     if (existingDomainSet.has(root)) {
       currentScraperState.duplicateCount++;
       addLog('duplicate', `[DUPLICATE PREVENTED] ${root} already in database — Skipped`);
       continue;
     }
 
+    if (existingBrandSet.has(analysis.brandBase)) {
+      currentScraperState.duplicateCount++;
+      addLog('duplicate', `[ccTLD BRAND DUPLICATE] ${root} matches already recorded brand '${analysis.brandBase}' (e.g. .ca / .uk / .us) — Skipped`);
+      continue;
+    }
+
     // Mark seen
     existingDomainSet.add(root);
+    existingBrandSet.add(analysis.brandBase);
 
     // Deep scan website for write-for-us details
     const siteData = await deepScanSite(currentItem.url, currentItem.niche);
@@ -674,9 +860,9 @@ export async function runScraperJob(
     // Enqueue spidered outlinks for continuous infinite discovery
     if (siteData.discoveredOutlinks && siteData.discoveredOutlinks.length > 0) {
       siteData.discoveredOutlinks.forEach(outUrl => {
-        const outRoot = normalizeDomain(outUrl);
-        if (!existingDomainSet.has(outRoot)) {
-          candidateQueue.push({ url: outUrl, niche: siteData.niche });
+        const outAnalysis = analyzeDomain(outUrl);
+        if (!outAnalysis.isGov && !outAnalysis.isSubdomain && !existingDomainSet.has(outAnalysis.apex) && !existingBrandSet.has(outAnalysis.brandBase)) {
+          candidateQueue.push({ url: outAnalysis.apex, niche: siteData.niche });
         }
       });
     }
