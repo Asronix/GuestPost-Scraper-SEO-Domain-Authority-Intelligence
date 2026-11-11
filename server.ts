@@ -16,7 +16,8 @@ import {
   currentScraperState,
   runScraperJob,
   addLog,
-  generateTopicalKeywords
+  generateTopicalKeywords,
+  detectCountry
 } from './server/scraperEngine.ts';
 import type {
   ScrapedGuestPost,
@@ -109,6 +110,7 @@ app.get('/api/guestposts', (req: Request, res: Response) => {
   const {
     q,
     niche,
+    country,
     minDA,
     maxDA,
     status,
@@ -127,7 +129,17 @@ app.get('/api/guestposts', (req: Request, res: Response) => {
       p.pageTitle.toLowerCase().includes(term) ||
       p.guidelinesSummary.toLowerCase().includes(term) ||
       (p.contactEmail && p.contactEmail.toLowerCase().includes(term)) ||
-      p.niche.toLowerCase().includes(term)
+      p.niche.toLowerCase().includes(term) ||
+      (p.country && p.country.toLowerCase().includes(term))
+    );
+  }
+
+  // Country filter
+  if (country && country !== 'all') {
+    const cNorm = country.toLowerCase();
+    filtered = filtered.filter(p =>
+      (p.countryCode && p.countryCode.toLowerCase() === cNorm) ||
+      (p.country && p.country.toLowerCase().includes(cNorm))
     );
   }
 
@@ -163,17 +175,28 @@ app.get('/api/guestposts', (req: Request, res: Response) => {
 
   // Sorting
   switch (sortBy) {
-    case 'da_asc':
-      filtered.sort((a, b) => a.domainAuthority - b.domainAuthority);
-      break;
-    case 'domain_asc':
-      filtered.sort((a, b) => a.domain.localeCompare(b.domain));
+    case 'date_desc':
+      filtered.sort((a, b) => {
+        const timeA = a.discoveredAt ? (new Date(a.discoveredAt).getTime() || 0) : 0;
+        const timeB = b.discoveredAt ? (new Date(b.discoveredAt).getTime() || 0) : 0;
+        return timeB - timeA;
+      });
       break;
     case 'date_asc':
-      filtered.sort((a, b) => new Date(a.discoveredAt).getTime() - new Date(b.discoveredAt).getTime());
+      filtered.sort((a, b) => {
+        const timeA = a.discoveredAt ? (new Date(a.discoveredAt).getTime() || 0) : 0;
+        const timeB = b.discoveredAt ? (new Date(b.discoveredAt).getTime() || 0) : 0;
+        return timeA - timeB;
+      });
       break;
-    case 'date_desc':
-      filtered.sort((a, b) => new Date(b.discoveredAt).getTime() - new Date(a.discoveredAt).getTime());
+    case 'domain_asc':
+      filtered.sort((a, b) => (a.rootDomain || a.domain).localeCompare(b.rootDomain || b.domain));
+      break;
+    case 'domain_desc':
+      filtered.sort((a, b) => (b.rootDomain || b.domain).localeCompare(a.rootDomain || a.domain));
+      break;
+    case 'da_asc':
+      filtered.sort((a, b) => a.domainAuthority - b.domainAuthority);
       break;
     case 'da_desc':
     default:
@@ -205,7 +228,7 @@ app.get('/api/guestposts', (req: Request, res: Response) => {
 
 // 2. Add / Import Manual Site (with Automatic Deduplication & Subdomain Filter)
 app.post('/api/guestposts', async (req: Request, res: Response) => {
-  const { url, niche, contactEmail, guidelines, feeStatus } = req.body;
+  const { url, niche, contactEmail, guidelines, feeStatus, country, countryCode } = req.body;
   if (!url) {
     res.status(400).json({ error: 'URL is required' });
     return;
@@ -269,6 +292,10 @@ app.post('/api/guestposts', async (req: Request, res: Response) => {
     mozSecretKey: settings.mozSecretKey
   });
 
+  const detectedGeo = (country && countryCode)
+    ? { code: countryCode, name: country }
+    : detectCountry(rootDomain, guidelines || '', '', 'SG');
+
   const newPost: ScrapedGuestPost = {
     id: `gp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     domain: rootDomain,
@@ -282,6 +309,8 @@ app.post('/api/guestposts', async (req: Request, res: Response) => {
     pageRank: seo.pageRank,
     seoProvider: seo.provider,
     niche: niche || 'General Tech',
+    country: detectedGeo.name,
+    countryCode: detectedGeo.code,
     freeOrPaid: feeStatus || 'Free Submission',
     status: 'new',
     notes: 'Manually added to database.',
@@ -495,7 +524,11 @@ app.post('/api/scraper/start', async (req: Request, res: Response) => {
     customUrls = [],
     maxResults = 0,
     minDA = 0,
-    continuous = true
+    continuous = true,
+    targetCountry = 'SG',
+    autoRotateCountry = true,
+    virtualLocationEnabled = true,
+    proxyUrl = ''
   } = req.body as ScrapeJobOptions;
 
   const settings = readSettings();
@@ -511,7 +544,11 @@ app.post('/api/scraper/start', async (req: Request, res: Response) => {
     seoProvider: settings.seoProvider,
     openPageRankKey: settings.openPageRankKey,
     mozAccessId: settings.mozAccessId,
-    mozSecretKey: settings.mozSecretKey
+    mozSecretKey: settings.mozSecretKey,
+    targetCountry,
+    autoRotateCountry: autoRotateCountry !== false,
+    virtualLocationEnabled: virtualLocationEnabled !== false,
+    proxyUrl
   };
 
   // Run asynchronously so response returns immediately
@@ -678,6 +715,7 @@ app.get('/api/export/csv', (req: Request, res: Response) => {
     'Domain Authority',
     'PageRank',
     'Niche',
+    'Country',
     'Page URL',
     'Contact Email',
     'Submission URL',
@@ -695,6 +733,7 @@ app.get('/api/export/csv', (req: Request, res: Response) => {
     p.domainAuthority,
     p.pageRank,
     escapeCSV(p.niche),
+    escapeCSV(p.country || p.countryCode || 'Singapore'),
     escapeCSV(p.pageUrl),
     escapeCSV(p.contactEmail),
     escapeCSV(p.submissionUrl),

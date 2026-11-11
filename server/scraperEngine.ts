@@ -33,6 +33,8 @@ export interface ScrapedGuestPost {
   notes?: string;
   discoveredAt: string;
   verified: boolean;
+  country?: string;
+  countryCode?: string;
 }
 
 export interface ScrapeJobOptions {
@@ -47,6 +49,10 @@ export interface ScrapeJobOptions {
   openPageRankKey?: string;
   mozAccessId?: string;
   mozSecretKey?: string;
+  targetCountry?: string;
+  autoRotateCountry?: boolean;
+  virtualLocationEnabled?: boolean;
+  proxyUrl?: string;
 }
 
 export interface ScrapeLogEntry {
@@ -71,6 +77,10 @@ export interface ScraperState {
   startTime: string | null;
   elapsedSeconds: number;
   logs: ScrapeLogEntry[];
+  targetCountry?: string;
+  activeCountry?: string;
+  virtualLocation?: string;
+  autoRotateCountry?: boolean;
 }
 
 // Global active scraper state
@@ -88,7 +98,11 @@ export const currentScraperState: ScraperState = {
   currentUrl: '',
   startTime: null,
   elapsedSeconds: 0,
-  logs: []
+  logs: [],
+  targetCountry: 'SG',
+  activeCountry: 'SG',
+  virtualLocation: 'Singapore (SG) · en-SG',
+  autoRotateCountry: true
 };
 
 let timerInterval: NodeJS.Timeout | null = null;
@@ -252,6 +266,262 @@ export function generateTopicalKeywords(topicOrNiche: string): string[] {
     `${base} lifestyle`,
     `how to ${base}`
   ];
+}
+
+export interface CountryConfig {
+  code: string;
+  name: string;
+  searchLocale: string;
+  acceptLanguage: string;
+  simulatedSubnet: string;
+  tlds: string[];
+  locationKeywords: string[];
+  seeds: Array<{ url: string; niche: string }>;
+}
+
+export const COUNTRY_REGISTRY: Record<string, CountryConfig> = {
+  'SG': {
+    code: 'SG',
+    name: 'Singapore',
+    searchLocale: 'sg-en',
+    acceptLanguage: 'en-SG,en;q=0.9,zh-SG;q=0.8',
+    simulatedSubnet: '103.252.200.',
+    tlds: ['.sg', '.com.sg'],
+    locationKeywords: ['Singapore', 'SG', 'Lion City', 'Jurong', 'Orchard'],
+    seeds: [
+      { url: 'https://dailyvanity.sg/write-for-us', niche: 'Beauty & Skincare' },
+      { url: 'https://herworld.com/women/contributors', niche: 'Fashion & Beauty' },
+      { url: 'https://beautyinsider.sg/write-for-us/', niche: 'Cosmetics & Skincare' },
+      { url: 'https://thehoneycombers.com/singapore/contact-us/', niche: 'Lifestyle & Beauty' },
+      { url: 'https://thefindersingapore.com/write-for-us', niche: 'Expat Living & Beauty' },
+      { url: 'https://harpersbazaar.com.sg/beauty', niche: 'Luxury Cosmetics' },
+      { url: 'https://femalemag.com.sg/beauty', niche: 'Trending Skincare' },
+      { url: 'https://alvinology.com/write-for-us/', niche: 'Singapore Lifestyle' },
+      { url: 'https://sassymamasg.com/write-for-us/', niche: 'Family & Beauty' },
+      { url: 'https://tropika.club/magazine', niche: 'Spas & Aesthetics' },
+      { url: 'https://zula.sg/perspective', niche: 'Modern Women & Skincare' },
+      { url: 'https://singaporemotherhood.com/write-for-us', niche: 'Wellness & Beauty' },
+      { url: 'https://expatliving.sg/write-for-us', niche: 'Living & Beauty' },
+      { url: 'https://vanillaluxury.sg/contact', niche: 'Luxury Lifestyle' },
+      { url: 'https://middleclass.sg/write-for-us', niche: 'Culture & Lifestyle' },
+      { url: 'https://ordinarypatrons.com', niche: 'Singapore Reviews' },
+      { url: 'https://aspirantsg.com/write-for-us', niche: 'Singapore Trends' },
+      { url: 'https://superadrianme.com/contact-us/', niche: 'Travel & Grooming' },
+      { url: 'https://buro247.sg', niche: 'High Fashion & Beauty' }
+    ]
+  },
+  'PH': {
+    code: 'PH',
+    name: 'Philippines',
+    searchLocale: 'ph-en',
+    acceptLanguage: 'en-PH,fil-PH;q=0.9,en;q=0.8',
+    simulatedSubnet: '112.198.115.',
+    tlds: ['.ph', '.com.ph'],
+    locationKeywords: ['Philippines', 'PH', 'Filipino', 'Manila', 'Cebu', 'Makati'],
+    seeds: [
+      { url: 'https://preview.ph/beauty', niche: 'Beauty & Skincare' },
+      { url: 'https://cosmo.ph/beauty', niche: 'Beauty & Haircare' },
+      { url: 'https://projectvanity.com/write-for-us', niche: 'Cosmetics & Makeup' },
+      { url: 'https://femalenetwork.com/beauty', niche: 'Women & Wellness' },
+      { url: 'https://wheninmanila.com/write-for-us/', niche: 'Lifestyle & Beauty' },
+      { url: 'https://spot.ph/shopping-beauty', niche: 'Shopping & Beauty' },
+      { url: 'https://philstarlife.com/beauty-fashion', niche: 'Editorial Beauty' },
+      { url: 'https://nolisoli.ph', niche: 'Conscious Beauty' },
+      { url: 'https://metro.style/beauty', niche: 'Glamour & Aesthetics' },
+      { url: 'https://villagepipol.com/contribute', niche: 'Pop Culture & Beauty' },
+      { url: 'https://outoftownblog.com/write-for-us', niche: 'Travel & Wellness' },
+      { url: 'https://gadgetmatch.com', niche: 'Tech & Lifestyle' },
+      { url: 'https://modernparenting.onemega.com', niche: 'Parenting & Beauty' }
+    ]
+  },
+  'MY': {
+    code: 'MY',
+    name: 'Malaysia',
+    searchLocale: 'my-en',
+    acceptLanguage: 'en-MY,ms-MY;q=0.9,en;q=0.8',
+    simulatedSubnet: '175.143.80.',
+    tlds: ['.my', '.com.my'],
+    locationKeywords: ['Malaysia', 'MY', 'Malaysian', 'Kuala Lumpur', 'Penang'],
+    seeds: [
+      { url: 'https://pamper.my/editorial-guidelines', niche: 'Beauty & Skincare' },
+      { url: 'https://lipstiq.com/write-for-us', niche: 'Cosmetics & Lifestyle' },
+      { url: 'https://buro247.my/beauty', niche: 'Luxury Skincare' },
+      { url: 'https://femalemag.my/beauty', niche: 'Modern Beauty' },
+      { url: 'https://hype.my/contribute', niche: 'Pop Culture & Grooming' },
+      { url: 'https://worldofbuzz.com', niche: 'Lifestyle News' }
+    ]
+  },
+  'ID': {
+    code: 'ID',
+    name: 'Indonesia',
+    searchLocale: 'id-id',
+    acceptLanguage: 'id-ID,en;q=0.9',
+    simulatedSubnet: '180.252.160.',
+    tlds: ['.id', '.co.id'],
+    locationKeywords: ['Indonesia', 'ID', 'Indonesian', 'Jakarta', 'Bali'],
+    seeds: [
+      { url: 'https://femaledaily.com', niche: 'Beauty Community' },
+      { url: 'https://beautynesia.id', niche: 'Skincare & Cosmetics' },
+      { url: 'https://clozette.co.id', niche: 'Fashion & Beauty' },
+      { url: 'https://popbela.com/beauty', niche: 'Millennial Beauty' }
+    ]
+  },
+  'US': {
+    code: 'US',
+    name: 'United States',
+    searchLocale: 'us-en',
+    acceptLanguage: 'en-US,en;q=0.9',
+    simulatedSubnet: '198.51.100.',
+    tlds: ['.us', '.com'],
+    locationKeywords: ['United States', 'USA', 'US', 'American'],
+    seeds: []
+  },
+  'UK': {
+    code: 'UK',
+    name: 'United Kingdom',
+    searchLocale: 'uk-en',
+    acceptLanguage: 'en-GB,en;q=0.9',
+    simulatedSubnet: '185.86.151.',
+    tlds: ['.uk', '.co.uk'],
+    locationKeywords: ['United Kingdom', 'UK', 'Britain', 'London'],
+    seeds: []
+  },
+  'AU': {
+    code: 'AU',
+    name: 'Australia',
+    searchLocale: 'au-en',
+    acceptLanguage: 'en-AU,en;q=0.9',
+    simulatedSubnet: '139.130.4.',
+    tlds: ['.au', '.com.au'],
+    locationKeywords: ['Australia', 'AU', 'Australian', 'Sydney', 'Melbourne'],
+    seeds: []
+  },
+  'GLOBAL': {
+    code: 'GLOBAL',
+    name: 'Global / Worldwide',
+    searchLocale: 'wt-wt',
+    acceptLanguage: 'en-US,en;q=0.9',
+    simulatedSubnet: '142.250.190.',
+    tlds: [],
+    locationKeywords: [],
+    seeds: []
+  }
+};
+
+export const COUNTRY_ROTATION_CHAIN = ['SG', 'PH', 'MY', 'ID', 'AU', 'UK', 'US', 'GLOBAL'];
+
+/**
+ * Returns localized request headers simulating client browsing from the target country
+ */
+export function getVirtualLocationHeaders(
+  countryCode: string = 'SG',
+  userAgent: string = BROWSER_USER_AGENT
+): Record<string, string> {
+  const norm = (countryCode || 'SG').toUpperCase();
+  const config = COUNTRY_REGISTRY[norm] || COUNTRY_REGISTRY['SG'];
+  const simulatedIp = `${config.simulatedSubnet}${Math.floor(Math.random() * 200) + 10}`;
+
+  return {
+    'User-Agent': userAgent,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': config.acceptLanguage,
+    'X-Forwarded-For': simulatedIp,
+    'X-Real-IP': simulatedIp,
+    'Client-IP': simulatedIp,
+    'CF-IPCountry': config.code,
+    'X-Country-Code': config.code,
+    'Sec-CH-UA-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none'
+  };
+}
+
+/**
+ * Accurately detects country origin from domain extension or page content
+ */
+export function detectCountry(
+  domain: string,
+  html: string = '',
+  pageTitle: string = '',
+  activeCountryCode: string = 'SG'
+): { code: string; name: string } {
+  const normDomain = (domain || '').toLowerCase();
+
+  // 1. Check domain ccTLD
+  if (normDomain.endsWith('.sg') || normDomain.includes('.com.sg')) return { code: 'SG', name: 'Singapore' };
+  if (normDomain.endsWith('.ph') || normDomain.includes('.com.ph')) return { code: 'PH', name: 'Philippines' };
+  if (normDomain.endsWith('.my') || normDomain.includes('.com.my')) return { code: 'MY', name: 'Malaysia' };
+  if (normDomain.endsWith('.id') || normDomain.includes('.co.id')) return { code: 'ID', name: 'Indonesia' };
+  if (normDomain.endsWith('.au') || normDomain.includes('.com.au')) return { code: 'AU', name: 'Australia' };
+  if (normDomain.endsWith('.uk') || normDomain.includes('.co.uk')) return { code: 'UK', name: 'United Kingdom' };
+  if (normDomain.endsWith('.ca')) return { code: 'CA', name: 'Canada' };
+
+  // 2. Check title and content keywords
+  const combinedText = `${pageTitle} ${html.slice(0, 3000)}`.toLowerCase();
+  if (combinedText.includes('singapore') || combinedText.includes('+65') || combinedText.includes('lion city')) {
+    return { code: 'SG', name: 'Singapore' };
+  }
+  if (combinedText.includes('philippines') || combinedText.includes('+63') || combinedText.includes('manila') || combinedText.includes('cebu')) {
+    return { code: 'PH', name: 'Philippines' };
+  }
+  if (combinedText.includes('malaysia') || combinedText.includes('+60') || combinedText.includes('kuala lumpur')) {
+    return { code: 'MY', name: 'Malaysia' };
+  }
+  if (combinedText.includes('indonesia') || combinedText.includes('+62') || combinedText.includes('jakarta')) {
+    return { code: 'ID', name: 'Indonesia' };
+  }
+  if (combinedText.includes('australia') || combinedText.includes('+61') || combinedText.includes('sydney')) {
+    return { code: 'AU', name: 'Australia' };
+  }
+  if (combinedText.includes('united kingdom') || combinedText.includes('london') || combinedText.includes('+44')) {
+    return { code: 'UK', name: 'United Kingdom' };
+  }
+
+  // Fallback to active crawling country
+  const fallback = COUNTRY_REGISTRY[activeCountryCode.toUpperCase()] || COUNTRY_REGISTRY['SG'];
+  return { code: fallback.code, name: fallback.name };
+}
+
+/**
+ * Creates localized topical search queries incorporating country keywords and regional ccTLD dorks
+ */
+export function generateCountryTopicalKeywords(topicOrNiche: string, countryCode: string = 'SG'): string[] {
+  const baseKeywords = generateTopicalKeywords(topicOrNiche);
+  const normCode = (countryCode || 'SG').toUpperCase();
+  const config = COUNTRY_REGISTRY[normCode];
+
+  if (!config || normCode === 'GLOBAL') {
+    return baseKeywords;
+  }
+
+  const countryName = config.name;
+  const regionalKeywords: string[] = [];
+
+  // Prefix with country name & regional terms
+  regionalKeywords.push(`${countryName} ${baseKeywords[0]}`);
+  regionalKeywords.push(`${countryName} ${baseKeywords[1] || 'beauty'}`);
+  regionalKeywords.push(`${config.code} ${baseKeywords[0]}`);
+
+  // Include ccTLD site dorks
+  config.tlds.forEach(tld => {
+    regionalKeywords.push(`${baseKeywords[0]} site:${tld}`);
+    regionalKeywords.push(`${baseKeywords[1] || 'skincare'} site:${tld}`);
+  });
+
+  // Append other country terms
+  config.locationKeywords.slice(0, 2).forEach(loc => {
+    regionalKeywords.push(`${loc} ${baseKeywords[0]}`);
+  });
+
+  // Merge with remaining base keywords
+  baseKeywords.forEach(k => {
+    if (!regionalKeywords.includes(k)) {
+      regionalKeywords.push(k);
+    }
+  });
+
+  return regionalKeywords;
 }
 
 // Niche Seed Directory for fallback & bootstrapping
@@ -466,25 +736,26 @@ function cleanEmail(rawEmail: string): string | undefined {
 
 /**
  * Searches search engine for footprints like `"write for us" "keyword"`
+ * Emulates virtual location via regional locale parameter and geo headers
  */
 export async function scrapeSearchEngineForFootprints(
   footprint: string,
   keyword: string,
-  limit: number = 30
+  limit: number = 30,
+  countryCode: string = 'SG'
 ): Promise<string[]> {
+  const normCode = (countryCode || 'SG').toUpperCase();
+  const countryConfig = COUNTRY_REGISTRY[normCode] || COUNTRY_REGISTRY['SG'];
   const query = `"${footprint}" ${keyword}`.trim();
-  addLog('crawl', `Searching footprint query: ${query} (Harvesting up to ${limit} candidates)...`);
+  addLog('crawl', `[GEO: ${countryConfig.name} (${countryConfig.code})] Searching footprint: ${query} (Harvesting up to ${limit} candidates)...`);
 
   const discoveredUrls: string[] = [];
 
   try {
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const localeParam = countryConfig.searchLocale && countryConfig.searchLocale !== 'wt-wt' ? `&kl=${countryConfig.searchLocale}` : '';
+    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}${localeParam}`;
     const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': BROWSER_USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9'
-      },
+      headers: getVirtualLocationHeaders(normCode),
       signal: AbortSignal.timeout(8000)
     });
 
@@ -509,7 +780,7 @@ export async function scrapeSearchEngineForFootprints(
           }
         }
       });
-      addLog('info', `Search returned ${discoveredUrls.length} candidate URLs for [${query}]`);
+      addLog('info', `[${countryConfig.name}] Search returned ${discoveredUrls.length} candidate URLs for [${query}]`);
     } else {
       addLog('warn', `Search query returned HTTP ${response.status}, utilizing multi-target pool`);
     }
@@ -525,8 +796,13 @@ export async function scrapeSearchEngineForFootprints(
  * 1. Inspects the provided URL or scans home navigation for guest post / write-for-us pages
  * 2. Parses guidelines, extracts editorial rules, word counts, submission links, emails
  * 3. Extracts external links to discover novel candidate domains (spidering)
+ * 4. Detects country origin and attaches virtual location metadata
  */
-export async function deepScanSite(url: string, defaultNiche?: string): Promise<{
+export async function deepScanSite(
+  url: string,
+  defaultNiche?: string,
+  activeCountryCode: string = 'SG'
+): Promise<{
   pageUrl: string;
   pageTitle: string;
   guidelinesSummary: string;
@@ -536,9 +812,11 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
   niche: string;
   verified: boolean;
   discoveredOutlinks: string[];
+  country: string;
+  countryCode: string;
 } | null> {
   const root = normalizeDomain(url);
-  addLog('crawl', `Deep scanning [${root}] for guest posting footprints...`);
+  addLog('crawl', `Deep scanning [${root}] for guest posting footprints (Virtual Geo: ${activeCountryCode})...`);
 
   let targetUrl = url.startsWith('http') ? url : `https://${url}`;
   let html = '';
@@ -547,25 +825,21 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
 
   try {
     const res = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': BROWSER_USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9'
-      },
+      headers: getVirtualLocationHeaders(activeCountryCode),
       redirect: 'follow',
       signal: AbortSignal.timeout(9000)
     });
 
     if (!res.ok) {
       addLog('warn', `HTTP ${res.status} when reaching ${targetUrl}`);
-      return buildSyntheticProfile(targetUrl, defaultNiche);
+      return buildSyntheticProfile(targetUrl, defaultNiche, activeCountryCode);
     }
 
     finalUrl = res.url || targetUrl;
     html = await res.text();
   } catch (err: any) {
     addLog('warn', `Connection issue on ${targetUrl}: ${err?.message || 'timeout'}. Generating candidate profile.`);
-    return buildSyntheticProfile(targetUrl, defaultNiche);
+    return buildSyntheticProfile(targetUrl, defaultNiche, activeCountryCode);
   }
 
   const $ = cheerio.load(html);
@@ -737,6 +1011,7 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
   }
 
   const detectedNiche = defaultNiche || inferNiche(root, guestPageHtml, pageTitle);
+  const detectedLocation = detectCountry(root, guestPageHtml, pageTitle, activeCountryCode);
 
   return {
     pageUrl: guestPageUrl,
@@ -747,7 +1022,9 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
     freeOrPaid,
     niche: detectedNiche,
     verified: true,
-    discoveredOutlinks
+    discoveredOutlinks,
+    country: detectedLocation.name,
+    countryCode: detectedLocation.code
   };
 }
 
@@ -792,9 +1069,11 @@ function inferNiche(root: string, html: string, title: string, defaultNiche?: st
   return defaultNiche || 'Beauty & Lifestyle';
 }
 
-function buildSyntheticProfile(targetUrl: string, defaultNiche?: string) {
+function buildSyntheticProfile(targetUrl: string, defaultNiche?: string, activeCountryCode: string = 'SG') {
   const root = normalizeDomain(targetUrl);
   const niche = defaultNiche || inferNiche(root, '', '', defaultNiche);
+  const detectedLocation = detectCountry(root, '', '', activeCountryCode);
+
   return {
     pageUrl: targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}/write-for-us/`,
     pageTitle: `Write for Us | ${root.charAt(0).toUpperCase() + root.slice(1)}`,
@@ -804,7 +1083,9 @@ function buildSyntheticProfile(targetUrl: string, defaultNiche?: string) {
     freeOrPaid: 'Free Submission',
     niche,
     verified: true,
-    discoveredOutlinks: []
+    discoveredOutlinks: [],
+    country: detectedLocation.name,
+    countryCode: detectedLocation.code
   };
 }
 
@@ -844,8 +1125,18 @@ export async function runScraperJob(
   const targetTopic = (options.keyword || (options.mode === 'niche_preset' ? 'beauty' : 'beauty')).trim();
   const lowerTopic = targetTopic.toLowerCase();
 
-  // Generate topical keywords tightly coupled to user's selected niche
-  const activeRotationKeywords = generateTopicalKeywords(targetTopic);
+  // Setup Country Targeting & Virtual Location Emulation (defaults to Singapore)
+  let currentCountryCode = (options.targetCountry || 'SG').toUpperCase();
+  const autoRotate = options.autoRotateCountry !== false;
+  currentScraperState.targetCountry = currentCountryCode;
+  currentScraperState.activeCountry = currentCountryCode;
+  currentScraperState.autoRotateCountry = autoRotate;
+
+  let currentCountryConfig = COUNTRY_REGISTRY[currentCountryCode] || COUNTRY_REGISTRY['SG'];
+  currentScraperState.virtualLocation = `${currentCountryConfig.name} (${currentCountryConfig.code}) · ${currentCountryConfig.searchLocale}`;
+
+  // Generate topical keywords tailored to active niche and active country
+  let activeRotationKeywords = generateCountryTopicalKeywords(targetTopic, currentCountryCode);
 
   // Match corresponding curated candidate pool to avoid cross-niche pollution
   let targetPoolKey = 'beauty';
@@ -867,8 +1158,9 @@ export async function runScraperJob(
 
   const activePool = NICHE_CANDIDATE_POOLS[targetPoolKey] || NICHE_CANDIDATE_POOLS['beauty'];
 
-  addLog('info', `Crawler engine initiated in INDEFINITE CONTINUOUS mode for niche [${targetTopic}]. Crawling until Stop button is clicked.`);
-  addLog('info', `Topical rotation locked to ${activeRotationKeywords.length} niche terms: ${activeRotationKeywords.slice(0, 5).join(', ')}...`);
+  addLog('info', `Crawler engine initiated in INDEFINITE CONTINUOUS mode for niche [${targetTopic}].`);
+  addLog('info', `[VIRTUAL LOCATION: ${currentCountryConfig.name} (${currentCountryConfig.code})] Headers: ${currentCountryConfig.acceptLanguage} | Simulated IP: ${currentCountryConfig.simulatedSubnet}x`);
+  addLog('info', `Auto-rotation on exhaustion: ${autoRotate ? 'ENABLED (Singapore -> Philippines -> Malaysia -> Indonesia -> Global)' : 'DISABLED'}`);
 
   // Active target queue
   const candidateQueue: Array<{ url: string; niche?: string }> = [];
@@ -878,18 +1170,23 @@ export async function runScraperJob(
     options.customUrls.forEach(u => candidateQueue.push({ url: u.trim(), niche: targetTopic }));
     addLog('info', `Queued ${candidateQueue.length} custom website seeds for continuous crawl`);
   } else if (options.mode === 'niche_preset') {
+    // Add country-specific seeds first
+    currentCountryConfig.seeds.forEach(item => candidateQueue.push(item));
     activePool.forEach(item => candidateQueue.push(item));
-    addLog('info', `Loaded initial ${activePool.length} candidates for category [${targetPoolKey}]`);
+    addLog('info', `Loaded initial ${candidateQueue.length} candidates for category [${targetPoolKey}] in [${currentCountryConfig.name}]`);
   } else {
-    // dork search initial seeds
+    // Initial seeds: country regional blogs first
+    currentCountryConfig.seeds.forEach(item => candidateQueue.push(item));
+
+    // dork search initial seeds using country virtual location
     const footprint = options.footprint || 'write for us';
-    const keyword = targetTopic;
-    const initialUrls = await scrapeSearchEngineForFootprints(footprint, keyword, 30);
+    const keyword = activeRotationKeywords[0] || targetTopic;
+    const initialUrls = await scrapeSearchEngineForFootprints(footprint, keyword, 30, currentCountryCode);
     initialUrls.forEach(u => candidateQueue.push({ url: u, niche: targetTopic }));
 
-    // Seed with all verified category-specific websites (100+ sites pool)
+    // Add category-specific pool
     activePool.forEach(item => candidateQueue.push(item));
-    addLog('info', `Queued ${candidateQueue.length} initial niche candidates (100+ sites per niche capacity active)`);
+    addLog('info', `Queued ${candidateQueue.length} initial candidates for [${currentCountryConfig.name}] (${activePool.length} verified niche blogs available)`);
   }
 
   const existingDomainSet = new Set(existingList.map(item => item.rootDomain.toLowerCase()));
@@ -906,14 +1203,14 @@ export async function runScraperJob(
       break;
     }
 
-    // Replenish target queue if running low using strictly niche-relevant keywords
+    // Replenish target queue if running low using strictly niche-relevant keywords & active country
     if (candidateQueue.length < 20 && currentScraperState.isContinuous) {
       const nextFootprint = ROTATION_FOOTPRINTS[rotationIndex % ROTATION_FOOTPRINTS.length];
       const nextKeyword = activeRotationKeywords[Math.floor(rotationIndex / ROTATION_FOOTPRINTS.length) % activeRotationKeywords.length];
       rotationIndex++;
 
-      addLog('info', `Queue replenishing: generating search footprint query: "${nextFootprint}" ${nextKeyword}`);
-      const freshUrls = await scrapeSearchEngineForFootprints(nextFootprint, nextKeyword, 25);
+      addLog('info', `Queue replenishing [${currentCountryConfig.code}]: footprint query: "${nextFootprint}" ${nextKeyword}`);
+      const freshUrls = await scrapeSearchEngineForFootprints(nextFootprint, nextKeyword, 25, currentCountryCode);
 
       freshUrls.forEach(u => {
         const uAnalysis = analyzeDomain(u);
@@ -922,8 +1219,14 @@ export async function runScraperJob(
         }
       });
 
-      // If search engines limit, add from niche-relevant pool
+      // If search engines limit, add from country seeds or niche-relevant pool
       if (candidateQueue.length < 10) {
+        currentCountryConfig.seeds.forEach(item => {
+          const pAnalysis = analyzeDomain(item.url);
+          if (!pAnalysis.isGov && !pAnalysis.isSubdomain && !existingDomainSet.has(pAnalysis.apex) && !existingBrandSet.has(pAnalysis.brandBase)) {
+            candidateQueue.push({ url: pAnalysis.apex, niche: item.niche });
+          }
+        });
         activePool.forEach(item => {
           const pAnalysis = analyzeDomain(item.url);
           if (!pAnalysis.isGov && !pAnalysis.isSubdomain && !existingDomainSet.has(pAnalysis.apex) && !existingBrandSet.has(pAnalysis.brandBase)) {
@@ -933,11 +1236,47 @@ export async function runScraperJob(
       }
     }
 
+    // Automatic Country Rotation when candidates for active country are exhausted
     if (candidateQueue.length === 0) {
-      if (!currentScraperState.isContinuous) break;
-      // Brief wait before next query round
-      await new Promise(r => setTimeout(r, 2000));
-      continue;
+      if (autoRotate && currentScraperState.isContinuous) {
+        const curIdx = COUNTRY_ROTATION_CHAIN.indexOf(currentCountryCode);
+        const nextIdx = (curIdx + 1) % COUNTRY_ROTATION_CHAIN.length;
+        const nextCode = COUNTRY_ROTATION_CHAIN[nextIdx];
+        const nextConf = COUNTRY_REGISTRY[nextCode] || COUNTRY_REGISTRY['GLOBAL'];
+
+        addLog('info', `[AUTO-ROTATION] ${currentCountryConfig.name} (${currentCountryConfig.code}) queue completed. Auto-rotating virtual location to ${nextConf.name} (${nextConf.code}).`);
+
+        currentCountryCode = nextCode;
+        currentCountryConfig = nextConf;
+        currentScraperState.activeCountry = currentCountryCode;
+        currentScraperState.virtualLocation = `${currentCountryConfig.name} (${currentCountryConfig.code}) · ${currentCountryConfig.searchLocale}`;
+
+        activeRotationKeywords = generateCountryTopicalKeywords(targetTopic, currentCountryCode);
+
+        // Enqueue next country's verified seeds
+        currentCountryConfig.seeds.forEach(item => {
+          const sAnalysis = analyzeDomain(item.url);
+          if (!sAnalysis.isGov && !sAnalysis.isSubdomain && !existingDomainSet.has(sAnalysis.apex) && !existingBrandSet.has(sAnalysis.brandBase)) {
+            candidateQueue.push({ url: sAnalysis.apex, niche: item.niche });
+          }
+        });
+
+        // Harvest fresh footprint URLs for newly rotated country
+        const rotatedUrls = await scrapeSearchEngineForFootprints(ROTATION_FOOTPRINTS[0], activeRotationKeywords[0], 25, currentCountryCode);
+        rotatedUrls.forEach(u => {
+          const uAnalysis = analyzeDomain(u);
+          if (!uAnalysis.isGov && !uAnalysis.isSubdomain && !existingDomainSet.has(uAnalysis.apex) && !existingBrandSet.has(uAnalysis.brandBase)) {
+            candidateQueue.push({ url: uAnalysis.apex, niche: activeRotationKeywords[0] });
+          }
+        });
+      }
+
+      if (candidateQueue.length === 0) {
+        if (!currentScraperState.isContinuous) break;
+        // Brief pause before retry
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
     }
 
     // Dequeue next target
@@ -978,8 +1317,8 @@ export async function runScraperJob(
     existingDomainSet.add(root);
     existingBrandSet.add(analysis.brandBase);
 
-    // Deep scan website for write-for-us details
-    const siteData = await deepScanSite(currentItem.url, currentItem.niche);
+    // Deep scan website for write-for-us details with virtual geo header emulation
+    const siteData = await deepScanSite(currentItem.url, currentItem.niche, currentCountryCode);
     if (!siteData) continue;
 
     // Enqueue spidered outlinks for continuous infinite discovery
@@ -1027,13 +1366,15 @@ export async function runScraperJob(
       niche: siteData.niche,
       freeOrPaid: siteData.freeOrPaid,
       status: 'new',
-      notes: `Discovered via continuous ${options.footprint || 'Write for us'} crawler.`,
+      notes: `Discovered via continuous crawler in [${siteData.country || currentCountryConfig.name}].`,
       discoveredAt: new Date().toISOString(),
-      verified: siteData.verified
+      verified: siteData.verified,
+      country: siteData.country || currentCountryConfig.name,
+      countryCode: siteData.countryCode || currentCountryConfig.code
     };
 
     currentScraperState.foundCount++;
-    addLog('success', `[VERIFIED OPPORTUNITY] Recorded: ${root} | DA: ${newRecord.domainAuthority} | Contact: ${newRecord.contactEmail || 'Form'}`);
+    addLog('success', `[VERIFIED: ${newRecord.country} (${newRecord.countryCode})] ${root} | DA: ${newRecord.domainAuthority} | Contact: ${newRecord.contactEmail || 'Form'}`);
 
     // IMMEDIATELY SAVE NEW OPPORTUNITY to database so results appear live
     await saveCallback([newRecord]);

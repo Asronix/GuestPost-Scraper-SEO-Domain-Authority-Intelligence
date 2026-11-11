@@ -13,7 +13,7 @@ import { SeoSettingsModal } from './components/SeoSettingsModal.tsx';
 import { SeleniumExportView } from './components/SeleniumExportView.tsx';
 import { GoogleSheetsBar } from './components/GoogleSheetsBar.tsx';
 import { DownloadAppModal } from './components/DownloadAppModal.tsx';
-import { initAuth, googleSignIn, logout, setAccessTokenInMemory } from './services/firebaseAuth.ts';
+import { initAuth, googleSignIn, logout, setAccessTokenInMemory, connectWithDirectToken } from './services/firebaseAuth.ts';
 import { appendToGoogleSheet, pullFromGoogleSheet } from './services/sheetsService.ts';
 import { CheckCircle2, ShieldCheck, AlertCircle, Square, Clock, Terminal } from 'lucide-react';
 
@@ -39,6 +39,7 @@ export default function App() {
   // Filters State
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNiche, setSelectedNiche] = useState<string>('all');
+  const [selectedCountry, setSelectedCountry] = useState<string>('all');
   const [minDA, setMinDA] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [hasEmailOnly, setHasEmailOnly] = useState<boolean>(false);
@@ -108,6 +109,7 @@ export default function App() {
       const params = new URLSearchParams();
       if (searchQuery) params.append('q', searchQuery);
       if (selectedNiche !== 'all') params.append('niche', selectedNiche);
+      if (selectedCountry !== 'all') params.append('country', selectedCountry);
       if (minDA > 0) params.append('minDA', minDA.toString());
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (hasEmailOnly) params.append('hasEmail', 'true');
@@ -133,7 +135,7 @@ export default function App() {
     } finally {
       setIsLoadingPosts(false);
     }
-  }, [searchQuery, selectedNiche, minDA, statusFilter, hasEmailOnly, freeOnly, sortBy]);
+  }, [searchQuery, selectedNiche, selectedCountry, minDA, statusFilter, hasEmailOnly, freeOnly, sortBy]);
 
   // Fetch Settings
   const fetchSettings = async () => {
@@ -179,7 +181,23 @@ export default function App() {
         showBanner('success', `Signed in as ${res.user.email}. Google Sheets storage connected!`);
       }
     } catch (err: any) {
-      showBanner('error', err?.message || 'Google Sign-In failed');
+      if (err?.message === 'ORIGIN_MISMATCH' || err?.message === 'UNAUTHORIZED_DOMAIN') {
+        showBanner('error', 'Google OAuth Origin Mismatch: please see the setup details in the Google Sheets panel below.');
+      } else {
+        showBanner('error', err?.message || 'Google Sign-In failed');
+      }
+    }
+  };
+
+  const handleDirectTokenConnect = async (token: string) => {
+    try {
+      const res = await connectWithDirectToken(token);
+      setAuthUser(res.user);
+      setGoogleAccessToken(res.accessToken);
+      showBanner('success', `Connected with Google Access Token! Google Sheets auto-sync is active.`);
+    } catch (err: any) {
+      showBanner('error', err?.message || 'Failed to authenticate with direct token');
+      throw err;
     }
   };
 
@@ -534,6 +552,7 @@ export default function App() {
             setCentralizedSheetUrl(url);
           }}
           onDataPulledFromSheet={handleDataPulledFromSheet}
+          onDirectTokenConnect={handleDirectTokenConnect}
         />
 
         {/* Stats Strip */}

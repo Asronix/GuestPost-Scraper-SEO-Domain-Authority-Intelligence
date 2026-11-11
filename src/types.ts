@@ -16,6 +16,20 @@ export interface GuestPost {
   notes?: string;
   discoveredAt: string;
   verified: boolean;
+  country?: string;
+  countryCode?: string;
+}
+
+export interface ScraperJobConfig {
+  mode: 'niche' | 'custom' | 'deep';
+  topicOrNiche: string;
+  seedUrl?: string;
+  minDA: number;
+  maxResults?: number | null;
+  targetCountry?: string;
+  autoRotateCountry?: boolean;
+  virtualLocationEnabled?: boolean;
+  proxyUrl?: string;
 }
 
 export interface ScrapeLogEntry {
@@ -40,6 +54,10 @@ export interface ScraperState {
   startTime: string | null;
   elapsedSeconds: number;
   logs: ScrapeLogEntry[];
+  targetCountry?: string;
+  activeCountry?: string;
+  virtualLocation?: string;
+  autoRotateCountry?: boolean;
 }
 
 export interface DashboardStats {

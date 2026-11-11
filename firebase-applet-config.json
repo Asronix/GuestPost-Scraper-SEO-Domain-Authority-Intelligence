@@ -1,11 +1,11 @@
 {
-  "projectId": "consolidate-test",
-  "appId": "1:702400490190:web:22adf473ed949db7cc7e9f",
-  "apiKey": "AIzaSyASDRytd5O6_MtaHOxrI4Q-pGSTlPdTVnA",
-  "authDomain": "consolidate-test.firebaseapp.com",
-  "storageBucket": "consolidate-test.firebasestorage.app",
-  "messagingSenderId": "702400490190",
+  "projectId": "eztoolkit-extension",
+  "appId": "1:960804499913:web:1ad60e599d1f3e1b71b818",
+  "apiKey": "AIzaSyADFW2c5gbV4S90D9wKdLYCfsiyOZxp6tc",
+  "authDomain": "eztoolkit-extension.firebaseapp.com",
+  "storageBucket": "eztoolkit-extension.firebasestorage.app",
+  "messagingSenderId": "960804499913",
   "measurementId": "",
-  "oAuthClientId": "702400490190-bqfs5ucvutqk1b2t9rab9n0hcdu65tok.apps.googleusercontent.com",
+  "oAuthClientId": "960804499913-3kb0pf1os3dp5oavbe2mjjcoa2e5uh0n.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

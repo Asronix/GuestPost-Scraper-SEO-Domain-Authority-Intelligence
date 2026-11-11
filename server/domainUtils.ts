@@ -14,6 +14,9 @@ export const COMPOUND_TLDS = new Set([
   'com.br', 'net.br', 'org.br', 'gov.br',
   'com.mx', 'org.mx', 'gob.mx', 'edu.mx',
   'com.sg', 'net.sg', 'org.sg', 'edu.sg', 'gov.sg',
+  'com.ph', 'net.ph', 'org.ph', 'gov.ph', 'edu.ph',
+  'com.my', 'net.my', 'org.my', 'gov.my', 'edu.my',
+  'co.id', 'web.id', 'or.id', 'go.id', 'ac.id',
   'com.tr', 'org.tr', 'edu.tr', 'gov.tr',
   'gc.ca', 'gov.ca', 'on.ca', 'qc.ca', 'bc.ca',
   'fed.us', 'state.us'

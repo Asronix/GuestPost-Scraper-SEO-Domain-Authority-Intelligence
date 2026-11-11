@@ -11,6 +11,7 @@ export const SHEET_HEADERS = [
   'Domain Authority',
   'PageRank',
   'Niche',
+  'Country',
   'Page URL',
   'Contact Email',
   'Submission URL',
@@ -28,6 +29,7 @@ export function postToSheetRow(post: GuestPost): (string | number)[] {
     post.domainAuthority,
     post.pageRank,
     post.niche,
+    post.country || post.countryCode || 'Singapore',
     post.pageUrl,
     post.contactEmail || '',
     post.submissionUrl || post.pageUrl,
@@ -230,19 +232,26 @@ export async function pullFromGoogleSheet(
   const data = await res.json();
   const rows: any[][] = data.values || [];
 
-  return rows.map((r, idx) => ({
-    domain: String(r[0] || ''),
-    rootDomain: String(r[1] || r[0] || ''),
-    domainAuthority: parseInt(r[2], 10) || 0,
-    pageRank: parseFloat(r[3]) || 0,
-    niche: String(r[4] || 'General Tech'),
-    pageUrl: String(r[5] || ''),
-    contactEmail: r[6] ? String(r[6]) : undefined,
-    submissionUrl: r[7] ? String(r[7]) : String(r[5] || ''),
-    freeOrPaid: String(r[8] || 'Free Submission'),
-    status: (['new', 'contacted', 'pitched', 'accepted', 'rejected'].includes(r[9])) ? r[9] : 'new',
-    discoveredAt: r[10] ? String(r[10]) : new Date().toISOString(),
-    guidelinesSummary: String(r[11] || ''),
-    notes: r[12] ? String(r[12]) : ''
-  }));
+  return rows.map((r) => {
+    const hasCountryColumn = r[5] && !String(r[5]).startsWith('http');
+    const country = hasCountryColumn ? String(r[5]) : 'Singapore';
+    const offset = hasCountryColumn ? 1 : 0;
+
+    return {
+      domain: String(r[0] || ''),
+      rootDomain: String(r[1] || r[0] || ''),
+      domainAuthority: parseInt(r[2], 10) || 0,
+      pageRank: parseFloat(r[3]) || 0,
+      niche: String(r[4] || 'Beauty & Skincare'),
+      country,
+      pageUrl: String(r[5 + offset] || ''),
+      contactEmail: r[6 + offset] ? String(r[6 + offset]) : undefined,
+      submissionUrl: r[7 + offset] ? String(r[7 + offset]) : String(r[5 + offset] || ''),
+      freeOrPaid: String(r[8 + offset] || 'Free Submission'),
+      status: (['new', 'contacted', 'pitched', 'accepted', 'rejected'].includes(r[9 + offset])) ? r[9 + offset] : 'new',
+      discoveredAt: r[10 + offset] ? String(r[10 + offset]) : new Date().toISOString(),
+      guidelinesSummary: String(r[11 + offset] || ''),
+      notes: r[12 + offset] ? String(r[12 + offset]) : ''
+    };
+  });
 }

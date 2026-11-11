@@ -12,6 +12,10 @@ interface ScraperModalProps {
     minDA?: number;
     continuous?: boolean;
     maxResults?: number;
+    targetCountry?: string;
+    autoRotateCountry?: boolean;
+    virtualLocationEnabled?: boolean;
+    proxyUrl?: string;
   }) => void;
   isLoading: boolean;
 }
@@ -30,6 +34,11 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
   const [minDA, setMinDA] = useState<number>(0);
   const [targetCount, setTargetCount] = useState<number>(100);
   const [isContinuous, setIsContinuous] = useState<boolean>(true);
+  const [targetCountry, setTargetCountry] = useState<string>(() => localStorage.getItem('gp_country') || 'SG');
+  const [autoRotateCountry, setAutoRotateCountry] = useState<boolean>(true);
+  const [virtualLocationEnabled, setVirtualLocationEnabled] = useState<boolean>(true);
+  const [showAdvancedProxy, setShowAdvancedProxy] = useState<boolean>(false);
+  const [proxyUrl, setProxyUrl] = useState<string>('');
 
   if (!isOpen) return null;
 
@@ -39,6 +48,7 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
     try {
       localStorage.setItem('gp_keyword', keyword);
       localStorage.setItem('gp_niche', nichePreset);
+      localStorage.setItem('gp_country', targetCountry);
     } catch {}
 
     const maxResults = targetCount > 0 ? targetCount : undefined;
@@ -54,7 +64,11 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
         customUrls: urls,
         minDA,
         continuous: isContinuous,
-        maxResults
+        maxResults,
+        targetCountry,
+        autoRotateCountry,
+        virtualLocationEnabled,
+        proxyUrl: proxyUrl.trim() || undefined
       });
     } else if (mode === 'niche_preset') {
       onStartScraper({
@@ -62,7 +76,11 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
         keyword: nichePreset,
         minDA,
         continuous: isContinuous,
-        maxResults
+        maxResults,
+        targetCountry,
+        autoRotateCountry,
+        virtualLocationEnabled,
+        proxyUrl: proxyUrl.trim() || undefined
       });
     } else {
       onStartScraper({
@@ -71,7 +89,11 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
         keyword,
         minDA,
         continuous: isContinuous,
-        maxResults
+        maxResults,
+        targetCountry,
+        autoRotateCountry,
+        virtualLocationEnabled,
+        proxyUrl: proxyUrl.trim() || undefined
       });
     }
   };
@@ -245,6 +267,96 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
               </select>
             </div>
           )}
+
+          {/* Search Location & Virtual Geolocation */}
+          <div className="space-y-3 bg-slate-950/70 border border-slate-800 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-white flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Search Location / Country</span>
+              </label>
+              <span className="text-[11px] font-mono text-cyan-400">
+                Virtual Geo: {targetCountry} (Active)
+              </span>
+            </div>
+
+            <select
+              value={targetCountry}
+              onChange={(e) => setTargetCountry(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+            >
+              <option value="SG">Singapore (SG) — Regional seeds + .sg / .com.sg dorks (Default)</option>
+              <option value="PH">Philippines (PH) — Regional seeds + .ph / .com.ph dorks</option>
+              <option value="MY">Malaysia (MY) — Regional seeds + .my / .com.my dorks</option>
+              <option value="ID">Indonesia (ID) — Regional seeds + .id / .co.id dorks</option>
+              <option value="US">United States (US) — American blogs & publications</option>
+              <option value="UK">United Kingdom (UK) — British blogs & .uk publications</option>
+              <option value="AU">Australia (AU) — Australian blogs & .com.au</option>
+              <option value="GLOBAL">Global / Worldwide — Worldwide discovery scope</option>
+            </select>
+
+            {/* Auto-Rotation Option */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoRotateCountry}
+                  onChange={(e) => setAutoRotateCountry(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-700 text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900"
+                />
+                <div className="text-xs">
+                  <span className="font-medium text-slate-200">Auto-rotate countries when results are exhausted</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    When opportunities for <strong className="text-slate-400">{targetCountry === 'SG' ? 'Singapore' : targetCountry}</strong> deplete, the engine seamlessly rotates virtual location and search scope to neighboring regional territories (Singapore &rarr; Philippines &rarr; Malaysia &rarr; Indonesia &rarr; Global).
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Virtual Location Emulation Details */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between text-xs">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={virtualLocationEnabled}
+                    onChange={(e) => setVirtualLocationEnabled(e.target.checked)}
+                    className="rounded border-slate-700 text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900"
+                  />
+                  <span className="text-slate-300 font-medium">Virtual Geolocation Header Emulation</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedProxy(!showAdvancedProxy)}
+                  className="text-[11px] text-cyan-400 hover:underline"
+                >
+                  {showAdvancedProxy ? 'Hide Proxy Settings' : 'Custom Regional Proxy'}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Dispatches localized <code className="text-slate-400 font-mono">Accept-Language</code>, regional search locales, and simulated regional client IPs matching the active country.
+              </p>
+
+              {/* Optional Custom Proxy Input */}
+              {showAdvancedProxy && (
+                <div className="mt-2.5 pt-2.5 border-t border-slate-800/60 space-y-1.5">
+                  <label className="text-[11px] font-medium text-slate-400 block">
+                    Custom Regional Proxy URL (Optional HTTP / SOCKS5)
+                  </label>
+                  <input
+                    type="text"
+                    value={proxyUrl}
+                    onChange={(e) => setProxyUrl(e.target.value)}
+                    placeholder="e.g. http://user:pass@sg-proxy.com:8080 or socks5://127.0.0.1:1080"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
+                  />
+                  <span className="text-[10px] text-slate-500 block">
+                    Leave blank to use built-in virtual header emulation with cloud container networking.
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Target Quantity to Discover / Scan */}
           <div>
