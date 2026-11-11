@@ -20,7 +20,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
   onAddSite
 }) => {
   const [url, setUrl] = useState('');
-  const [niche, setNiche] = useState('Technology & Software');
+  const [niche, setNiche] = useState('Beauty & Skincare');
   const [contactEmail, setContactEmail] = useState('');
   const [feeStatus, setFeeStatus] = useState('Free Submission');
   const [guidelines, setGuidelines] = useState('');
@@ -186,6 +186,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
                 onChange={(e) => setNiche(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
               >
+                <option value="Beauty & Skincare">Beauty & Skincare</option>
                 <option value="Technology & Software">Technology & Software</option>
                 <option value="Digital Marketing & SEO">Digital Marketing & SEO</option>
                 <option value="Business & Startups">Business & Startups</option>

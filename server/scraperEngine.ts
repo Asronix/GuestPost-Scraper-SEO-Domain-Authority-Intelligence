@@ -266,7 +266,125 @@ const NICHE_CANDIDATE_POOLS: Record<string, Array<{ url: string; niche: string }
     { url: 'https://newbeauty.com/write-for-us/', niche: 'Aesthetics & Skincare' },
     { url: 'https://skincareorg.com/write-for-us/', niche: 'Dermatology & Skincare' },
     { url: 'https://bellanaija.com/beauty', niche: 'Beauty & Wellness' },
-    { url: 'https://allure.com', niche: 'Beauty & Trends' }
+    { url: 'https://allure.com', niche: 'Beauty & Trends' },
+    { url: 'https://intothegloss.com', niche: 'Skincare Routines & Makeup' },
+    { url: 'https://glossy.co', niche: 'Beauty Industry & Brands' },
+    { url: 'https://cosmopolitan.com/style-beauty', niche: 'Beauty, Hair & Makeup' },
+    { url: 'https://elle.com/beauty', niche: 'High-End Beauty & Cosmetics' },
+    { url: 'https://marieclaire.com/beauty', niche: 'Skincare Trends & Wellness' },
+    { url: 'https://harpersbazaar.com/beauty', niche: 'Luxury Cosmetics & Hair' },
+    { url: 'https://vogue.com/beauty', niche: 'Editorial Beauty & Skincare' },
+    { url: 'https://realsimple.com/beauty-fashion', niche: 'Practical Beauty & Anti-Aging' },
+    { url: 'https://glamour.com/beauty', niche: 'Affordable Makeup & Hair' },
+    { url: 'https://refinery29.com/en-us/beauty', niche: 'Inclusive Beauty & Trends' },
+    { url: 'https://purewow.com/beauty', niche: 'Skincare Advice & Tips' },
+    { url: 'https://coveteur.com/beauty', niche: 'Celebrity Beauty & Routine' },
+    { url: 'https://whowhatwear.com/beauty', niche: 'Trending Beauty & Style' },
+    { url: 'https://popsugar.com/beauty', niche: 'Beauty Tutorials & Products' },
+    { url: 'https://wellandgood.com/beauty', niche: 'Clean Beauty & Wellness' },
+    { url: 'https://mindbodygreen.com/beauty', niche: 'Holistic Skin & Longevity' },
+    { url: 'https://bustle.com/beauty', niche: 'Gen-Z Beauty & Makeup' },
+    { url: 'https://self.com/beauty', niche: 'Dermatologist Skincare' },
+    { url: 'https://shape.com/lifestyle/beauty-style', niche: 'Fitness Beauty & Active Skin' },
+    { url: 'https://instyle.com/beauty', niche: 'Beauty Awards & Best-In-Class' },
+    { url: 'https://thecut.com/beauty', niche: 'Beauty Culture & Analysis' },
+    { url: 'https://fashionista.com/beauty', niche: 'Fashion Week Beauty & Launches' },
+    { url: 'https://thezoereport.com/beauty', niche: 'Chic Skincare & Hair' },
+    { url: 'https://hellogiggles.com/beauty', niche: 'DIY Beauty & Honest Reviews' },
+    { url: 'https://seventeen.com/beauty', niche: 'Teen Skincare & Acne Solutions' },
+    { url: 'https://teenvogue.com/beauty', niche: 'Youth Beauty Trends' },
+    { url: 'https://leaf.tv/beauty', niche: 'Natural Beauty Guides' },
+    { url: 'https://livestrong.com/cat/beauty', niche: 'Skin Health & Sunscreen' },
+    { url: 'https://totalbeauty.com', niche: 'Cosmetic Product Ratings' },
+    { url: 'https://shefinds.com/beauty', niche: 'Anti-Aging & Drugstore Beauty' },
+    { url: 'https://beautybanter.com', niche: 'Insider Skincare Secrets' },
+    { url: 'https://beautypedia.com', niche: 'Ingredient Analysis & Skin Care' },
+    { url: 'https://beautycrafter.com', niche: 'DIY Organic Beauty' },
+    { url: 'https://britishbeautyblogger.com', niche: 'UK Beauty Releases & Reviews' },
+    { url: 'https://thesundaygirl.com', niche: 'Daily Skincare & Swatches' },
+    { url: 'https://musingsofamuse.com', niche: 'Seasonal Makeup Collections' },
+    { url: 'https://theannaedit.com/beauty', niche: 'Minimalist Beauty Routines' },
+    { url: 'https://amodelrecommends.com', niche: 'Model Skincare Recommendations' },
+    { url: 'https://reallyree.com', niche: 'Beauty Launches & Foundation' },
+    { url: 'https://temptalia.com', niche: 'Color Swatches & Eyeshadows' },
+    { url: 'https://hudabeauty.com/us/en_US/blog', niche: 'Glamour Makeup Techniques' },
+    { url: 'https://cultbeauty.com/blog', niche: 'Indie Beauty Discoveries' },
+    { url: 'https://makeupgeek.com', niche: 'Professional Makeup Artistry' },
+    { url: 'https://naturallycurly.com', niche: 'Curly Hair Care & Treatments' },
+    { url: 'https://dermstore.com/blog', niche: 'Medical Grade Skincare' },
+    { url: 'https://paulaschoice.com/expert-advice', niche: 'Science-Backed Skincare' },
+    { url: 'https://sokoglam.com', niche: 'K-Beauty & Glass Skin' },
+    { url: 'https://theklog.co', niche: 'Korean Skincare Guides' },
+    { url: 'https://skinvision.com/blog', niche: 'Skin Health & Sun Safety' },
+    { url: 'https://editorialist.com/beauty', niche: 'Luxury Fragrance & Cosmetics' },
+    { url: 'https://cleanbeautygurls.com', niche: 'Non-Toxic Clean Beauty' },
+    { url: 'https://crueltyfreekitty.com', niche: 'Cruelty-Free Brands List' },
+    { url: 'https://mybeautybunny.com', niche: 'Cruelty-Free Skincare' },
+    { url: 'https://ethicalelephant.com', niche: 'Vegan Beauty & Cosmetics' },
+    { url: 'https://organicbeautyblogger.com', niche: 'Organic Skincare & Oils' },
+    { url: 'https://glitz.beauty', niche: 'Aesthetic Trends & Beauty' },
+    { url: 'https://makeupview.co', niche: 'Beauty & Skincare Tips' },
+    { url: 'https://beautyreview.co.nz', niche: 'Australasian Beauty Community' },
+    { url: 'https://beautyholicsanonymous.com', niche: 'Real Reviews for Real Skin' },
+    { url: 'https://15minutebeauty.com', niche: 'Pregnancy-Safe Skincare' },
+    { url: 'https://polishpolice.com', niche: 'Nail Art & Nail Care' },
+    { url: 'https://alllacqueredup.com', niche: 'Nail Polish Trends' },
+    { url: 'https://vampyvarnish.com', niche: 'Goth & Vamp Beauty Aesthetics' },
+    { url: 'https://thebeautylookbook.com', niche: 'High-End Neutral Swatches' },
+    { url: 'https://makeupandbeautyblog.com', niche: 'Friendly Daily Beauty Musings' },
+    { url: 'https://rouge18.com', niche: 'NYC Beauty Writer Perspective' },
+    { url: 'https://beautyprofessor.com', niche: 'Academic Beauty Reviews' },
+    { url: 'https://phyrra.net', niche: 'Pale Skin & Cruelty-Free Goth' },
+    { url: 'https://primebeautyblog.com', niche: 'Beauty for Women Over 40' },
+    { url: 'https://perilouslypale.com', niche: 'Porcelain Skin & Makeup' },
+    { url: 'https://lolassecretbeautyblog.com', niche: 'Anti-Aging Serums & Creams' },
+    { url: 'https://blushingnoir.com', niche: 'Beauty Deals & Swatches' },
+    { url: 'https://advicesisters.com', niche: 'Fragrance & Skincare Reviews' },
+    { url: 'https://beautyinfozone.com', niche: 'Experienced Beauty Bloggers' },
+    { url: 'https://agingbackwards.com', niche: 'Mature Skin Solutions' },
+    { url: 'https://thepaintedladies.com', niche: 'Bright Lips & Creative Eyes' },
+    { url: 'https://neversaydiebeauty.com', niche: 'Skincare Trials & Retinol' },
+    { url: 'https://cosmeticsanctuary.com', niche: 'Indie Nail Lacquers' },
+    { url: 'https://beautyundercover.com', niche: 'Salon Secrets & Styling' },
+    { url: 'https://beautyblitz.com', niche: 'Fast Beauty News' },
+    { url: 'https://dailymakeover.com', niche: 'Hairstyles & Virtual Makeover' },
+    { url: 'https://modernsalon.com', niche: 'Professional Hair Styling' },
+    { url: 'https://americansalon.com', niche: 'Salon Owner Perspectives' },
+    { url: 'https://salontoday.com', niche: 'Salon Business & Beauty' },
+    { url: 'https://behindthechair.com', niche: 'Hair Stylist Community' },
+    { url: 'https://estheticianconnection.com', niche: 'Licensed Esthetician Advice' },
+    { url: 'https://skininc.com', niche: 'Spa & Medi-Spa Insights' },
+    { url: 'https://lneonline.com', niche: 'Esthetics & Spa Treatments' },
+    { url: 'https://dermascope.com', niche: 'Aesthetic Education & Peels' },
+    { url: 'https://ascpskincare.com', niche: 'Professional Skin Therapy' },
+    { url: 'https://professionalbeauty.com.au', niche: 'Aussie Beauty Industry' },
+    { url: 'https://spaexecutive.com', niche: 'Wellness & Luxury Spa News' },
+    { url: 'https://dayspamagazine.com', niche: 'Day Spa Trends & Massage' },
+    { url: 'https://organicspamagazine.com', niche: 'Eco-Luxury Spa & Beauty' },
+    { url: 'https://welldefined.com', niche: 'Wellness Hospitality & Skin' },
+    { url: 'https://byrdie.com.au', niche: 'Australian Clean Skincare' },
+    { url: 'https://beautycrew.com.au', niche: 'Beauty Advice & Tested Products' },
+    { url: 'https://grittypretty.com.au', niche: 'Elevated Australian Beauty' },
+    { url: 'https://rescu.com.au', niche: 'Modern Lifestyle & Beauty' },
+    { url: 'https://beautyheaven.com.au', niche: 'User Product Trial Teams' },
+    { url: 'https://popsugar.co.uk/beauty', niche: 'British Beauty Trends' },
+    { url: 'https://getthegloss.com', niche: 'Expert Health & Beauty' },
+    { url: 'https://sheerluxe.com/beauty', niche: 'Curated Luxe Skincare' },
+    { url: 'https://stylist.co.uk/beauty', niche: 'Smart Beauty Journalism' },
+    { url: 'https://graziadaily.co.uk/beauty', niche: 'Celebrity Trends & Hair' },
+    { url: 'https://glamourmagazine.co.uk/topic/beauty', niche: 'London Beauty Scene' },
+    { url: 'https://beauticate.com', niche: 'Inside Bathrooms & Routines' },
+    { url: 'https://beautynewsnyc.com', niche: 'First Online Beauty Mag' },
+    { url: 'https://theglowedit.com', niche: 'Glowing Skin Routines' },
+    { url: 'https://theskincareedit.com', niche: 'Before & After Celebrities' },
+    { url: 'https://labmuffin.com', niche: 'Chemistry of Cosmetic Formulations' },
+    { url: 'https://chemistconfessions.com', niche: 'Skincare Chemistry Truths' },
+    { url: 'https://kindofstephen.com', niche: 'Cosmetic Chemist Analysis' },
+    { url: 'https://carolinehirons.com', niche: 'Double Cleansing & Acid Toners' },
+    { url: 'https://lisaeldridge.com', niche: 'Classic Masterclass Makeup' },
+    { url: 'https://waynegoss.co.uk', niche: 'Pro Brush & Contour Tips' },
+    { url: 'https://charlottetilbury.com/us/secrets', niche: 'Flawless Filter Makeup' },
+    { url: 'https://pixiwoo.com', niche: 'Iconic Beauty Tutorials' }
   ],
   'tech': [
     { url: 'https://sitepoint.com/write-for-sitepoint/', niche: 'Technology & Coding' },
@@ -352,10 +470,10 @@ function cleanEmail(rawEmail: string): string | undefined {
 export async function scrapeSearchEngineForFootprints(
   footprint: string,
   keyword: string,
-  limit: number = 10
+  limit: number = 30
 ): Promise<string[]> {
   const query = `"${footprint}" ${keyword}`.trim();
-  addLog('crawl', `Searching footprint query: ${query}`);
+  addLog('crawl', `Searching footprint query: ${query} (Harvesting up to ${limit} candidates)...`);
 
   const discoveredUrls: string[] = [];
 
@@ -367,7 +485,7 @@ export async function scrapeSearchEngineForFootprints(
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      signal: AbortSignal.timeout(7000)
+      signal: AbortSignal.timeout(8000)
     });
 
     if (response.ok) {
@@ -393,10 +511,10 @@ export async function scrapeSearchEngineForFootprints(
       });
       addLog('info', `Search returned ${discoveredUrls.length} candidate URLs for [${query}]`);
     } else {
-      addLog('warn', `Search query returned HTTP ${response.status}, utilizing target pool`);
+      addLog('warn', `Search query returned HTTP ${response.status}, utilizing multi-target pool`);
     }
   } catch (err: any) {
-    addLog('warn', `Query paused (${err?.message || 'timeout'}). Rotating target pool.`);
+    addLog('warn', `Query paused (${err?.message || 'timeout'}). Utilizing multi-target pool.`);
   }
 
   return discoveredUrls;
@@ -472,7 +590,7 @@ export async function deepScanSite(url: string, defaultNiche?: string): Promise<
           !outRoot.includes('github.com') &&
           !outRoot.includes('cloudflare.com')
         ) {
-          if (!discoveredOutlinks.includes(href) && discoveredOutlinks.length < 5) {
+          if (!discoveredOutlinks.includes(href) && discoveredOutlinks.length < 25) {
             discoveredOutlinks.push(href);
           }
         }
@@ -766,11 +884,12 @@ export async function runScraperJob(
     // dork search initial seeds
     const footprint = options.footprint || 'write for us';
     const keyword = targetTopic;
-    const initialUrls = await scrapeSearchEngineForFootprints(footprint, keyword, 12);
+    const initialUrls = await scrapeSearchEngineForFootprints(footprint, keyword, 30);
     initialUrls.forEach(u => candidateQueue.push({ url: u, niche: targetTopic }));
 
-    // Seed with category-specific pool ONLY (never cross-pollute with other niches)
+    // Seed with all verified category-specific websites (100+ sites pool)
     activePool.forEach(item => candidateQueue.push(item));
+    addLog('info', `Queued ${candidateQueue.length} initial niche candidates (100+ sites per niche capacity active)`);
   }
 
   const existingDomainSet = new Set(existingList.map(item => item.rootDomain.toLowerCase()));
@@ -781,14 +900,20 @@ export async function runScraperJob(
   while (currentScraperState.isRunning) {
     currentScraperState.queueSize = candidateQueue.length;
 
+    // Check optional user max results target (e.g. 100, 200)
+    if (options.maxResults && options.maxResults > 0 && currentScraperState.foundCount >= options.maxResults) {
+      addLog('success', `[TARGET REACHED] Successfully verified & recorded ${currentScraperState.foundCount} opportunities in niche [${targetTopic}].`);
+      break;
+    }
+
     // Replenish target queue if running low using strictly niche-relevant keywords
-    if (candidateQueue.length < 5 && currentScraperState.isContinuous) {
+    if (candidateQueue.length < 20 && currentScraperState.isContinuous) {
       const nextFootprint = ROTATION_FOOTPRINTS[rotationIndex % ROTATION_FOOTPRINTS.length];
       const nextKeyword = activeRotationKeywords[Math.floor(rotationIndex / ROTATION_FOOTPRINTS.length) % activeRotationKeywords.length];
       rotationIndex++;
 
       addLog('info', `Queue replenishing: generating search footprint query: "${nextFootprint}" ${nextKeyword}`);
-      const freshUrls = await scrapeSearchEngineForFootprints(nextFootprint, nextKeyword, 10);
+      const freshUrls = await scrapeSearchEngineForFootprints(nextFootprint, nextKeyword, 25);
 
       freshUrls.forEach(u => {
         const uAnalysis = analyzeDomain(u);
@@ -797,8 +922,8 @@ export async function runScraperJob(
         }
       });
 
-      // If search engines limit, add from niche-relevant pool ONLY
-      if (candidateQueue.length < 3) {
+      // If search engines limit, add from niche-relevant pool
+      if (candidateQueue.length < 10) {
         activePool.forEach(item => {
           const pAnalysis = analyzeDomain(item.url);
           if (!pAnalysis.isGov && !pAnalysis.isSubdomain && !existingDomainSet.has(pAnalysis.apex) && !existingBrandSet.has(pAnalysis.brandBase)) {

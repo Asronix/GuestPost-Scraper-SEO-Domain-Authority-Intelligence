@@ -15,7 +15,8 @@ import { GoogleGenAI } from '@google/genai';
 import {
   currentScraperState,
   runScraperJob,
-  addLog
+  addLog,
+  generateTopicalKeywords
 } from './server/scraperEngine.ts';
 import type {
   ScrapedGuestPost,

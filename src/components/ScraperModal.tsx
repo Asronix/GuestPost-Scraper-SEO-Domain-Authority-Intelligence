@@ -11,6 +11,7 @@ interface ScraperModalProps {
     customUrls?: string[];
     minDA?: number;
     continuous?: boolean;
+    maxResults?: number;
   }) => void;
   isLoading: boolean;
 }
@@ -23,16 +24,24 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'dork_search' | 'custom_urls' | 'niche_preset'>('dork_search');
   const [footprint, setFootprint] = useState<string>('write for us');
-  const [keyword, setKeyword] = useState<string>('technology');
+  const [keyword, setKeyword] = useState<string>(() => localStorage.getItem('gp_keyword') || 'beauty');
   const [customUrlsText, setCustomUrlsText] = useState<string>('');
-  const [nichePreset, setNichePreset] = useState<string>('tech');
-  const [minDA, setMinDA] = useState<number>(30);
+  const [nichePreset, setNichePreset] = useState<string>(() => localStorage.getItem('gp_niche') || 'beauty');
+  const [minDA, setMinDA] = useState<number>(0);
+  const [targetCount, setTargetCount] = useState<number>(100);
   const [isContinuous, setIsContinuous] = useState<boolean>(true);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    try {
+      localStorage.setItem('gp_keyword', keyword);
+      localStorage.setItem('gp_niche', nichePreset);
+    } catch {}
+
+    const maxResults = targetCount > 0 ? targetCount : undefined;
 
     if (mode === 'custom_urls') {
       const urls = customUrlsText
@@ -44,14 +53,16 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
         mode: 'custom_urls',
         customUrls: urls,
         minDA,
-        continuous: isContinuous
+        continuous: isContinuous,
+        maxResults
       });
     } else if (mode === 'niche_preset') {
       onStartScraper({
         mode: 'niche_preset',
         keyword: nichePreset,
         minDA,
-        continuous: isContinuous
+        continuous: isContinuous,
+        maxResults
       });
     } else {
       onStartScraper({
@@ -59,7 +70,8 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
         footprint,
         keyword,
         minDA,
-        continuous: isContinuous
+        continuous: isContinuous,
+        maxResults
       });
     }
   };
@@ -184,11 +196,11 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
                   type="text"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="e.g. artificial intelligence, software, marketing, finance..."
+                  placeholder="e.g. beauty, skincare, cosmetics, makeup, haircare..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                 />
                 <span className="text-[11px] text-slate-500 mt-1 block">
-                  The crawler begins with <code className="text-cyan-400 font-mono font-semibold">"{footprint}" {keyword}</code> and automatically rotates related footprints and niches as it crawls indefinitely.
+                  The crawler begins with <code className="text-cyan-400 font-mono font-semibold">"{footprint}" {keyword}</code> and automatically rotates related topical keywords (skincare, cosmetics, makeup, clean beauty) without drifting to other niches.
                 </span>
               </div>
             </div>
@@ -204,7 +216,7 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
                 rows={5}
                 value={customUrlsText}
                 onChange={(e) => setCustomUrlsText(e.target.value)}
-                placeholder="techcrunch.com&#10;searchenginejournal.com&#10;smashingmagazine.com&#10;https://example.com/write-for-us"
+                placeholder="byrdie.com&#10;stylecraze.com&#10;makeupandbeauty.com&#10;newbeauty.com&#10;https://example.com/write-for-us"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-500"
               />
               <span className="text-[11px] text-slate-500 block">
@@ -224,14 +236,35 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
                 onChange={(e) => setNichePreset(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
               >
-                <option value="tech">Technology, Coding & DevOps (SitePoint, HackerNoon, DZone, etc.)</option>
+                <option value="beauty">Beauty, Skincare & Cosmetics (130+ Sites: Byrdie, StyleCraze, MakeupAndBeauty, etc.)</option>
                 <option value="marketing">Digital Marketing, SEO & MarTech (HubSpot, SearchEngineLand, etc.)</option>
+                <option value="tech">Technology, Coding & DevOps (SitePoint, HackerNoon, DZone, etc.)</option>
                 <option value="business">Startups, Business & Leadership (Entrepreneur, Bplans, etc.)</option>
                 <option value="finance">Finance, Investing & Fintech (Investing.com, ModestMoney, etc.)</option>
                 <option value="health">Health, Nutrition & Wellness (MindBodyGreen, Greatist, etc.)</option>
               </select>
             </div>
           )}
+
+          {/* Target Quantity to Discover / Scan */}
+          <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              Target Quantity to Discover & Scan per Niche
+            </label>
+            <select
+              value={targetCount}
+              onChange={(e) => setTargetCount(parseInt(e.target.value, 10))}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+            >
+              <option value={100}>100+ Sites per Niche (Comprehensive Crawl & Deep Scan)</option>
+              <option value={200}>200+ Sites per Niche (Deep Web Discovery)</option>
+              <option value={300}>300+ Sites per Niche (Maximum Directory Expansion)</option>
+              <option value={0}>Continuous Indefinite (Run Non-Stop until Stopped)</option>
+            </select>
+            <span className="text-[11px] text-slate-500 mt-1 block">
+              Configured with over 130+ verified candidate seeds plus multi-page search dork harvesting and recursive outlink spidering.
+            </span>
+          </div>
 
           {/* Minimum DA Filter */}
           <div>
@@ -243,13 +276,13 @@ export const ScraperModal: React.FC<ScraperModalProps> = ({
               onChange={(e) => setMinDA(parseInt(e.target.value, 10))}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             >
-              <option value={0}>No Minimum (Record All Discovered Sites)</option>
-              <option value={30}>Min DA 30+ (Standard)</option>
-              <option value={50}>Min DA 50+ (High Authority Only)</option>
-              <option value={70}>Min DA 70+ (Elite Tier Only)</option>
+              <option value={0}>No Minimum (Record All Discovered Sites — Recommended)</option>
+              <option value={20}>Min DA 20+ (Standard Web Authority)</option>
+              <option value={40}>Min DA 40+ (Established Blogs)</option>
+              <option value={60}>Min DA 60+ (High Authority Only)</option>
             </select>
             <span className="text-[11px] text-slate-500 mt-1 block">
-              Sites below this threshold are filtered out before being recorded.
+              Sites below this threshold are filtered out before being recorded. Set to "No Minimum" so all valid niche opportunities are captured.
             </span>
           </div>
 

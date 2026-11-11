@@ -205,6 +205,7 @@ export const OpportunitiesView: React.FC<OpportunitiesViewProps> = ({
             className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-cyan-500"
           >
             <option value="all">All Niches</option>
+            <option value="Beauty">Beauty & Skincare</option>
             <option value="Tech">Technology & Software</option>
             <option value="Marketing">Marketing & SEO</option>
             <option value="Business">Business & Startups</option>
